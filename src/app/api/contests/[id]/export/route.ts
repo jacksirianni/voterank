@@ -31,9 +31,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get ballots
-    const statusFilter = includeRemoved 
-      ? {} 
-      : { status: { in: ['VALID', 'SUSPECTED_DUPLICATE'] as const } };
+    const statusFilter = includeRemoved
+      ? {}
+      : { status: { in: ['VALID', 'SUSPECTED_DUPLICATE'] } };
 
     const ballots = await prisma.ballot.findMany({
       where: {
