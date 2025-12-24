@@ -1,0 +1,397 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  contests      Contest[]
+  workspaces    WorkspaceMember[]
+  ownedWorkspaces Workspace[]
+
+  // Future: subscription/billing
+  stripeCustomerId String?
+  subscriptionTier SubscriptionTier @default(FREE)
+  subscriptionEndsAt DateTime?
+
+  @@index([email])
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  TEAM
+  ENTERPRISE
+}
+
+// ============================================================================
+// WORKSPACE / TEAM (Optional grouping for contests)
+// ============================================================================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  owner    User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members  WorkspaceMember[]
+  contests Contest[]
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ============================================================================
+// CONTEST (Poll / Election)
+// ============================================================================
+
+model Contest {
+  id          String   @id @default(cuid())
+  // Public-facing identifier (short, URL-safe)
+  slug        String   @unique
+  
+  // Ownership
+  ownerId     String?
+  workspaceId String?
+  
+  // Basic info
+  title       String
+  description String?  @db.Text
+  
+  // Contest type for display purposes
+  contestType ContestType @default(POLL)
+  
+  // Voting method
+  votingMethod VotingMethod @default(IRV)
+  
+  // Status
+  status      ContestStatus @default(DRAFT)
+  
+  // Visibility & Access Control
+  visibility  ContestVisibility @default(PUBLIC_LINK)
+  
+  // Ballot style preference
+  ballotStyle BallotStyle @default(DRAG)
+  
+  // Timing
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  opensAt     DateTime?
+  closesAt    DateTime?
+  timezone    String    @default("UTC")
+  
+  // Settings JSON for method-specific and feature flags
+  // Example: { "allowPartialRanking": true, "maxRanks": 5, "showLiveResults": false }
+  settings    Json      @default("{}")
+  
+  // Anti-abuse settings
+  deduplicationEnabled Boolean @default(false)
+  requireVoterId       Boolean @default(false)
+  
+  // Branding (premium feature)
+  primaryColor   String?
+  secondaryColor String?
+  logoUrl        String?
+  
+  // Relations
+  owner       User?              @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  workspace   Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  categories  Category[]
+  options     Option[]
+  voters      Voter[]
+  ballots     Ballot[]
+  allowedVoters AllowedVoter[]
+  resultSnapshots ResultSnapshot[]
+
+  @@index([ownerId])
+  @@index([workspaceId])
+  @@index([slug])
+  @@index([status])
+  @@index([closesAt])
+}
+
+enum ContestType {
+  POLL        // Quick decision poll
+  ELECTION    // Formal election
+  SURVEY      // Multi-question survey
+  RANKING     // General ranking
+}
+
+enum VotingMethod {
+  IRV         // Instant Runoff Voting (single winner)
+  STV         // Single Transferable Vote (multi-winner)
+  BORDA       // Borda count
+  CONDORCET   // Condorcet method
+  APPROVAL    // Approval voting
+  SCORE       // Score/Range voting
+  STAR        // STAR voting
+  PLURALITY   // Simple plurality/FPTP
+}
+
+enum ContestStatus {
+  DRAFT       // Not yet published
+  OPEN        // Accepting votes
+  PAUSED      // Temporarily not accepting votes
+  CLOSED      // Voting ended, results final
+  ARCHIVED    // Hidden from active lists
+}
+
+enum ContestVisibility {
+  PUBLIC_LINK     // Anyone with link can vote
+  ORGANIZER_ONLY  // Only organizer can see/vote (testing)
+  RESTRICTED_LIST // Only allowed voter IDs can vote
+  PRIVATE         // Requires auth to access
+}
+
+enum BallotStyle {
+  DRAG  // Drag and drop ranking
+  GRID  // Grid/matrix style ballot
+}
+
+// ============================================================================
+// CATEGORY (For multi-topic contests)
+// ============================================================================
+
+model Category {
+  id          String   @id @default(cuid())
+  contestId   String
+  title       String
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  contest  Contest          @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  options  Option[]
+  ballots  Ballot[]
+  resultSnapshots ResultSnapshot[]
+
+  @@index([contestId])
+  @@index([contestId, sortOrder])
+}
+
+// ============================================================================
+// OPTION / CANDIDATE
+// ============================================================================
+
+model Option {
+  id          String   @id @default(cuid())
+  contestId   String
+  categoryId  String?
+  
+  name        String
+  description String?  @db.Text
+  imageUrl    String?
+  
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  contest  Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([contestId])
+  @@index([categoryId])
+  @@index([contestId, sortOrder])
+}
+
+// ============================================================================
+// VOTER (Registration/tracking)
+// ============================================================================
+
+model Voter {
+  id          String   @id @default(cuid())
+  contestId   String
+  
+  // Voter identifier (email, code, or custom ID)
+  voterId     String
+  
+  // Optional profile info
+  name        String?
+  email       String?
+  
+  // Tracking
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  // Relations
+  contest Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  ballots Ballot[]
+
+  @@unique([contestId, voterId])
+  @@index([contestId])
+}
+
+// ============================================================================
+// ALLOWED VOTERS (For restricted list mode)
+// ============================================================================
+
+model AllowedVoter {
+  id        String   @id @default(cuid())
+  contestId String
+  voterId   String   // The allowed voter identifier
+  name      String?  // Optional display name
+  email     String?  // Optional email for notifications
+  hasVoted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, voterId])
+  @@index([contestId])
+}
+
+// ============================================================================
+// BALLOT (Vote submission)
+// ============================================================================
+
+model Ballot {
+  id          String   @id @default(cuid())
+  contestId   String
+  categoryId  String?
+  voterId     String?  // Reference to Voter.id if registered
+  
+  // The actual vote: array of option IDs in rank order
+  // Example: ["opt_abc", "opt_def", "opt_ghi"] means 1st, 2nd, 3rd choice
+  ranking     Json     // String[] of option IDs
+  
+  // Anti-abuse tracking
+  deviceFingerprintHash String?
+  ipHash                String?
+  userAgent             String?
+  
+  // Status
+  status      BallotStatus @default(VALID)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  contest  Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  voter    Voter?    @relation(fields: [voterId], references: [id], onDelete: SetNull)
+
+  @@index([contestId])
+  @@index([categoryId])
+  @@index([voterId])
+  @@index([contestId, categoryId])
+  @@index([deviceFingerprintHash])
+  @@index([status])
+}
+
+enum BallotStatus {
+  VALID              // Normal valid ballot
+  SUSPECTED_DUPLICATE // Flagged as potential duplicate
+  DEDUPED_IGNORED    // Ignored due to deduplication
+  REMOVED            // Manually removed by organizer
+  INVALID            // Failed validation
+}
+
+// ============================================================================
+// RESULT SNAPSHOT (Cached tabulation results)
+// ============================================================================
+
+model ResultSnapshot {
+  id          String   @id @default(cuid())
+  contestId   String
+  categoryId  String?
+  
+  // Which method was used
+  method      VotingMethod
+  
+  // Computation timestamp
+  computedAt  DateTime @default(now())
+  
+  // Version for cache invalidation
+  version     Int      @default(1)
+  
+  // The full tabulation result
+  // Structure depends on method, but for IRV includes:
+  // { rounds: [...], winner: {...}, summary: {...} }
+  rounds      Json
+  summary     Json
+  
+  // Integrity info (ballot count, hash, etc.)
+  integrity   Json
+  
+  // Metadata
+  computeTimeMs Int?
+
+  // Relations
+  contest  Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([contestId])
+  @@index([categoryId])
+  @@index([contestId, categoryId, computedAt])
+}
+
+// ============================================================================
+// AUDIT LOG (For tracking important actions)
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  contestId String?
+  userId    String?
+  
+  action    String   // e.g., "ballot_submitted", "contest_closed", "vote_removed"
+  details   Json?    // Additional context
+  
+  ipHash    String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([contestId])
+  @@index([userId])
+  @@index([createdAt])
+}

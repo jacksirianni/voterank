@@ -1,0 +1,188 @@
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { updateContestSchema } from '@/lib/validations';
+import { createErrorResponse, isContestOpen } from '@/lib/utils';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+// GET /api/contests/[id] - Get a single contest
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    
+    // Try to find by slug first, then by id
+    let contest = await prisma.contest.findUnique({
+      where: { slug: id },
+      include: {
+        options: {
+          where: { active: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        categories: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            options: {
+              where: { active: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+        _count: {
+          select: {
+            ballots: {
+              where: { status: { in: ['VALID', 'SUSPECTED_DUPLICATE'] } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!contest) {
+      contest = await prisma.contest.findUnique({
+        where: { id },
+        include: {
+          options: {
+            where: { active: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+          categories: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              options: {
+                where: { active: true },
+                orderBy: { sortOrder: 'asc' },
+              },
+            },
+          },
+          _count: {
+            select: {
+              ballots: {
+                where: { status: { in: ['VALID', 'SUSPECTED_DUPLICATE'] } },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!contest) {
+      return NextResponse.json({ error: 'Contest not found' }, { status: 404 });
+    }
+
+    // Add computed fields
+    const isOpen = isContestOpen(contest.status, contest.opensAt, contest.closesAt);
+
+    return NextResponse.json({
+      ...contest,
+      isOpen,
+      voteCount: contest._count.ballots,
+    });
+  } catch (error) {
+    console.error('Error fetching contest:', error);
+    const err = createErrorResponse(error);
+    return NextResponse.json({ error: err.error }, { status: err.statusCode });
+  }
+}
+
+// PATCH /api/contests/[id] - Update a contest
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    // Validate input
+    const validationResult = updateContestSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = validationResult.data;
+
+    // Find contest
+    const contest = await prisma.contest.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+    });
+
+    if (!contest) {
+      return NextResponse.json({ error: 'Contest not found' }, { status: 404 });
+    }
+
+    // Build update data
+    const updateData: Record<string, unknown> = {};
+    
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.contestType !== undefined) updateData.contestType = data.contestType;
+    if (data.votingMethod !== undefined) updateData.votingMethod = data.votingMethod;
+    if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (data.ballotStyle !== undefined) updateData.ballotStyle = data.ballotStyle;
+    if (data.timezone !== undefined) updateData.timezone = data.timezone;
+    if (data.opensAt !== undefined) updateData.opensAt = data.opensAt ? new Date(data.opensAt) : null;
+    if (data.closesAt !== undefined) updateData.closesAt = data.closesAt ? new Date(data.closesAt) : null;
+    if (data.settings !== undefined) updateData.settings = data.settings;
+    if (data.deduplicationEnabled !== undefined) updateData.deduplicationEnabled = data.deduplicationEnabled;
+    if (data.requireVoterId !== undefined) updateData.requireVoterId = data.requireVoterId;
+    if (data.status !== undefined) updateData.status = data.status;
+
+    const updatedContest = await prisma.contest.update({
+      where: { id: contest.id },
+      data: updateData,
+      include: {
+        options: {
+          where: { active: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        categories: {
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    // If status changed or settings changed, invalidate results cache
+    if (data.status !== undefined || data.settings !== undefined || data.deduplicationEnabled !== undefined) {
+      // Mark all result snapshots as stale by deleting them
+      // They'll be recomputed on next results request
+      await prisma.resultSnapshot.deleteMany({
+        where: { contestId: contest.id },
+      });
+    }
+
+    return NextResponse.json(updatedContest);
+  } catch (error) {
+    console.error('Error updating contest:', error);
+    const err = createErrorResponse(error);
+    return NextResponse.json({ error: err.error }, { status: err.statusCode });
+  }
+}
+
+// DELETE /api/contests/[id] - Delete a contest
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+
+    // Find contest
+    const contest = await prisma.contest.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+    });
+
+    if (!contest) {
+      return NextResponse.json({ error: 'Contest not found' }, { status: 404 });
+    }
+
+    // Delete contest (cascades to related records)
+    await prisma.contest.delete({
+      where: { id: contest.id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting contest:', error);
+    const err = createErrorResponse(error);
+    return NextResponse.json({ error: err.error }, { status: err.statusCode });
+  }
+}
