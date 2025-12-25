@@ -133,9 +133,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         contestId: contest.id,
         categoryId: categoryId || null,
         method: contest.votingMethod,
-        rounds: result.rounds as unknown as Record<string, unknown>[],
-        summary: result.summary as unknown as Record<string, unknown>,
-        integrity: result.integrity as unknown as Record<string, unknown>,
+        rounds: result.rounds,
+        summary: result.summary,
+        integrity: result.integrity,
         computeTimeMs: result.computeTimeMs,
       },
     });
