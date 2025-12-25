@@ -7,7 +7,6 @@ import {
   hashDeviceFingerprint,
   hashIP,
   checkRateLimit,
-  AppError,
 } from '@/lib/utils';
 
 interface RouteParams {
@@ -133,7 +132,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Handle voter ID
     let voter = null;
-    let voterIdHash = null;
 
     if (contest.requireVoterId) {
       if (!data.voterId) {
@@ -192,7 +190,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      voterIdHash = voter.id;
     }
 
     // Handle device fingerprint

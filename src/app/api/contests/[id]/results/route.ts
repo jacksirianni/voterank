@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getEngineForMethod, TabulationOption, StoredBallot, TabulationSettings } from '@/lib/tabulation';
 import { createErrorResponse } from '@/lib/utils';
-import { Prisma } from '@prisma/client';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -31,8 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check if results should be visible
     const settings = contest.settings as Record<string, unknown>;
-    const showLiveResults = settings.showLiveResults === true;
-    
+
     // For now, always show results (add auth checks later)
     // In production, check if user is organizer or if results are public
     if (contest.status === 'DRAFT') {

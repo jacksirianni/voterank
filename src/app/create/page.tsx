@@ -20,7 +20,7 @@ export default function CreateContestPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [votingMethod, setVotingMethod] = useState('IRV');
-  const [visibility, setVisibility] = useState('PUBLIC_LINK');
+  const [visibility] = useState('PUBLIC_LINK'); // Default visibility, UI coming soon
   const [ballotStyle, setBallotStyle] = useState('DRAG');
   const [requireVoterId, setRequireVoterId] = useState(false);
   const [allowPartialRanking, setAllowPartialRanking] = useState(true);
