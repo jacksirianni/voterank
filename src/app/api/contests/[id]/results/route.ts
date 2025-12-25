@@ -134,9 +134,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         contestId: contest.id,
         categoryId: categoryId || null,
         method: contest.votingMethod,
-        rounds: result.rounds as Prisma.JsonArray,
-        summary: result.summary as Prisma.JsonObject,
-        integrity: result.integrity as Prisma.JsonObject,
+        rounds: JSON.parse(JSON.stringify(result.rounds)),
+        summary: JSON.parse(JSON.stringify(result.summary)),
+        integrity: JSON.parse(JSON.stringify(result.integrity)),
         computeTimeMs: result.computeTimeMs,
       },
     });
