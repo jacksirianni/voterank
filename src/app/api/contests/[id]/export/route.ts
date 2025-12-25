@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createErrorResponse } from '@/lib/utils';
+import { BallotStatus } from '@prisma/client';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get ballots
     const statusFilter = includeRemoved
       ? {}
-      : { status: { in: ['VALID', 'SUSPECTED_DUPLICATE'] } };
+      : { status: { in: [BallotStatus.VALID, BallotStatus.SUSPECTED_DUPLICATE] } };
 
     const ballots = await prisma.ballot.findMany({
       where: {
