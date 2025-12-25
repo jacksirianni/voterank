@@ -1,0 +1,54 @@
+<svg width="1500" height="500" viewBox="0 0 1500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5"/>
+      <stop offset="50%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="checkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981"/>
+      <stop offset="100%" style="stop-color:#34D399"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1500" height="500" fill="url(#bgGradient)"/>
+  
+  <!-- Decorative elements -->
+  <circle cx="150" cy="50" r="200" fill="white" opacity="0.05"/>
+  <circle cx="1350" cy="450" r="250" fill="white" opacity="0.05"/>
+  <circle cx="1200" cy="80" r="120" fill="white" opacity="0.03"/>
+  <circle cx="300" cy="400" r="180" fill="white" opacity="0.03"/>
+  
+  <!-- Pattern of small ranking icons -->
+  <g opacity="0.1">
+    <g transform="translate(100, 350)">
+      <rect width="40" height="10" rx="2" fill="white"/>
+      <rect y="14" width="30" height="10" rx="2" fill="white"/>
+      <rect y="28" width="20" height="10" rx="2" fill="white"/>
+    </g>
+    <g transform="translate(1300, 100)">
+      <rect width="40" height="10" rx="2" fill="white"/>
+      <rect y="14" width="30" height="10" rx="2" fill="white"/>
+      <rect y="28" width="20" height="10" rx="2" fill="white"/>
+    </g>
+  </g>
+  
+  <!-- Main logo centered -->
+  <g transform="translate(750, 250)">
+    <!-- Icon -->
+    <g transform="translate(-320, -60)">
+      <rect x="0" y="0" width="70" height="24" rx="6" fill="white"/>
+      <rect x="0" y="32" width="52" height="24" rx="6" fill="white" opacity="0.8"/>
+      <rect x="0" y="64" width="36" height="24" rx="6" fill="white" opacity="0.6"/>
+      
+      <circle cx="62" cy="66" r="26" fill="url(#checkGradient)"/>
+      <path d="M50 66 L58 75 L76 55" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    
+    <!-- Wordmark -->
+    <text x="-100" y="15" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" fill="white">
+      VoteRank
+    </text>
+  </g>
+</svg>

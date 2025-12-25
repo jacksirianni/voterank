@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function HomePage() {
   return (
@@ -7,13 +8,8 @@ export default function HomePage() {
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-amber-500 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span className="font-display font-bold text-xl">VoteRank</span>
+            <div className="flex items-center gap-3">
+              <Image src="/logo-primary.svg" alt="VoteRank" width={120} height={30} className="h-7 w-auto" />
             </div>
             <nav className="flex items-center gap-4">
               <Link href="/dashboard" className="btn-secondary text-sm">
@@ -34,7 +30,7 @@ export default function HomePage() {
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-slate-900 mb-6">
               Better decisions through{' '}
-              <span className="text-gradient">ranked choice voting</span>
+              <span className="bg-brand-gradient bg-clip-text text-transparent">ranked choice voting</span>
             </h1>
             <p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">
               Create polls and elections where every voice counts. Our transparent 
@@ -163,15 +159,15 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-gradient-to-br from-slate-900 to-slate-800">
+      <section className="py-20 bg-brand-gradient">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-display font-bold text-white mb-4">
             Ready to make better decisions?
           </h2>
-          <p className="text-slate-300 mb-8">
+          <p className="text-indigo-100 mb-8">
             Create your first contest in minutes. Free for basic use, with premium features for teams.
           </p>
-          <Link href="/create" className="btn bg-white text-slate-900 hover:bg-slate-100 text-lg px-8 py-3">
+          <Link href="/create" className="btn bg-white text-brand-600 hover:bg-slate-50 text-lg px-8 py-3 font-semibold">
             Get Started Free
           </Link>
         </div>
@@ -182,7 +178,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-slate-600">
-              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-brand-500 to-amber-500" />
+              <Image src="/icon-mark.svg" alt="VoteRank Icon" width={24} height={24} />
               <span className="font-medium">VoteRank</span>
             </div>
             <p className="text-sm text-slate-500">

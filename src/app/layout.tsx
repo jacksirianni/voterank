@@ -9,17 +9,23 @@ export const metadata: Metadata = {
   description: 'Create polls and elections with ranked choice voting. Simple, transparent, and fair results.',
   keywords: ['voting', 'ranked choice voting', 'instant runoff', 'polls', 'elections', 'IRV'],
   authors: [{ name: 'VoteRank' }],
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/icon-512.svg',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     siteName: 'VoteRank',
     title: 'VoteRank - Modern Ranked Choice Voting',
     description: 'Create polls and elections with ranked choice voting.',
+    images: ['/og-image.svg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'VoteRank - Modern Ranked Choice Voting',
     description: 'Create polls and elections with ranked choice voting.',
+    images: ['/twitter-banner.svg'],
   },
   robots: {
     index: true,

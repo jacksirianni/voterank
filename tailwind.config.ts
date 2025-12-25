@@ -9,19 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Warm, trustworthy palette
+        // VoteRank brand colors - Indigo/Violet palette
         brand: {
-          50: '#fef7ee',
-          100: '#fdedd3',
-          200: '#fad7a5',
-          300: '#f6bb6d',
-          400: '#f19333',
-          500: '#ed7712',
-          600: '#de5c08',
-          700: '#b84409',
-          800: '#93360f',
-          900: '#772f10',
-          950: '#401506',
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1', // Primary brand color
+          600: '#4f46e5', // Hover states
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
+        },
+        accent: {
+          violet: '#8B5CF6', // Gradient end, accents
+          emerald: '#10B981', // Success, confirmations
+          'emerald-light': '#34D399', // Success gradient end
         },
         slate: {
           850: '#172033',
@@ -64,8 +69,12 @@ const config: Config = {
       },
       boxShadow: {
         'inner-sm': 'inset 0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        'glow': '0 0 20px -5px rgb(241 147 51 / 0.3)',
-        'glow-lg': '0 0 40px -10px rgb(241 147 51 / 0.4)',
+        'glow': '0 0 20px -5px rgb(99 102 241 / 0.3)',
+        'glow-lg': '0 0 40px -10px rgb(99 102 241 / 0.4)',
+      },
+      backgroundImage: {
+        'brand-gradient': 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+        'success-gradient': 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
       },
     },
   },
