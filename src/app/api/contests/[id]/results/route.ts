@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getEngineForMethod, TabulationOption, StoredBallot, TabulationSettings } from '@/lib/tabulation';
 import { createErrorResponse } from '@/lib/utils';
+import { Prisma } from '@prisma/client';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -133,9 +134,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         contestId: contest.id,
         categoryId: categoryId || null,
         method: contest.votingMethod,
-        rounds: result.rounds,
-        summary: result.summary,
-        integrity: result.integrity,
+        rounds: result.rounds as Prisma.JsonArray,
+        summary: result.summary as Prisma.JsonObject,
+        integrity: result.integrity as Prisma.JsonObject,
         computeTimeMs: result.computeTimeMs,
       },
     });
