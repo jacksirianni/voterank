@@ -58,6 +58,11 @@ interface Contest {
   votingMethod: string;
   categories: { id: string; title: string }[];
   options: { id: string; name: string }[];
+  settings: {
+    resultsVisibility?: 'PUBLIC' | 'ORGANIZER_ONLY' | 'HIDDEN';
+    winnersCount?: number;
+    tieBreakMethod?: 'eliminate-all' | 'random' | 'keep-all';
+  };
 }
 
 export default function ResultsPage() {
@@ -68,6 +73,7 @@ export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, ResultData>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resultsHidden, setResultsHidden] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set([1]));
 
@@ -80,6 +86,14 @@ export default function ResultsPage() {
         if (!contestRes.ok) throw new Error('Contest not found');
         const contestData = await contestRes.json();
         setContest(contestData);
+
+        // Check if results are hidden
+        const settings = contestData.settings || {};
+        if (settings.resultsVisibility === 'HIDDEN') {
+          setResultsHidden(true);
+          setLoading(false);
+          return;
+        }
 
         // Determine categories
         const categories = contestData.categories.length > 0
@@ -94,6 +108,11 @@ export default function ResultsPage() {
           if (resultsRes.ok) {
             const resultData = await resultsRes.json();
             resultsMap[cat.id] = resultData;
+          } else if (resultsRes.status === 403) {
+            // Results are restricted
+            setResultsHidden(true);
+            setLoading(false);
+            return;
           }
         }
 
@@ -150,6 +169,28 @@ export default function ResultsPage() {
           <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Error</h1>
           <p className="text-slate-600 mb-6">{error}</p>
           <Link href="/" className="btn-primary">Go Home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Hidden results state
+  if (resultsHidden) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">{contest.title}</h1>
+          <p className="text-slate-600 mb-6">
+            Results for this contest are private. Only the organizer can view them.
+          </p>
+          <Link href={`/vote/${slug}`} className="btn-secondary">
+            Back to Contest
+          </Link>
         </div>
       </div>
     );
@@ -357,8 +398,30 @@ export default function ResultsPage() {
 
                         {/* Notes */}
                         {round.notes.length > 0 && (
-                          <div className="text-sm text-slate-500 italic">
-                            {round.notes.join(' • ')}
+                          <div className="space-y-1">
+                            {round.notes.map((note, idx) => {
+                              const isTieNote = note.toLowerCase().includes('tie');
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`text-sm ${
+                                    isTieNote
+                                      ? 'p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 font-medium'
+                                      : 'text-slate-500 italic'
+                                  }`}
+                                >
+                                  {isTieNote && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                      </svg>
+                                      Tie Detected:
+                                    </span>
+                                  )}{' '}
+                                  {note}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -370,17 +433,56 @@ export default function ResultsPage() {
 
             {/* How it works */}
             <div className="mt-8 card p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">How Instant Runoff Voting Works</h2>
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                How {contest.votingMethod === 'IRV' ? 'Instant Runoff Voting' : contest.votingMethod === 'STV' ? 'Single Transferable Vote' : contest.votingMethod} Works
+              </h2>
               <div className="prose prose-sm prose-slate">
-                <p>
-                  Instant Runoff Voting (IRV) finds a winner through rounds of counting. In each round,
-                  if no candidate has more than 50% of the active votes, the candidate with the fewest
-                  votes is eliminated. Their supporters&apos; votes then transfer to their next-ranked choice.
-                </p>
-                <p>
-                  This continues until one candidate reaches a majority of the remaining active ballots.
-                  Some ballots become &quot;exhausted&quot; when all their ranked candidates have been eliminated.
-                </p>
+                {contest.votingMethod === 'IRV' ? (
+                  <>
+                    <p>
+                      Instant Runoff Voting (IRV) finds a winner through rounds of counting. In each round,
+                      if no candidate has more than 50% of the active votes, the candidate with the fewest
+                      votes is eliminated. Their supporters&apos; votes then transfer to their next-ranked choice.
+                    </p>
+                    <p>
+                      This continues until one candidate reaches a majority of the remaining active ballots.
+                      Some ballots become &quot;exhausted&quot; when all their ranked candidates have been eliminated.
+                    </p>
+                  </>
+                ) : contest.votingMethod === 'STV' ? (
+                  <>
+                    <p>
+                      Single Transferable Vote (STV) elects multiple winners proportionally. It uses a &quot;quota&quot;
+                      (calculated as: total votes ÷ (winners + 1) + 1) that candidates must reach to be elected.
+                    </p>
+                    <p>
+                      In each round, candidates reaching the quota are elected. Any votes beyond the quota
+                      (surplus votes) transfer to voters&apos; next preferences. If no candidate reaches the quota,
+                      the candidate with the fewest votes is eliminated and their votes transfer.
+                    </p>
+                    <p>
+                      This continues until all {contest.settings?.winnersCount || 'available'} seats are filled.
+                      Ballots become &quot;exhausted&quot; when all their ranked candidates have been either elected or eliminated.
+                    </p>
+                  </>
+                ) : (
+                  <p>Results are calculated using the {contest.votingMethod} method.</p>
+                )}
+
+                {/* Tie-breaking explanation */}
+                {contest.settings?.tieBreakMethod && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="font-medium text-amber-900 mb-1">Tie-Breaking Method</p>
+                    <p className="text-amber-800 text-xs">
+                      {contest.settings.tieBreakMethod === 'eliminate-all' &&
+                        'When candidates tie for elimination, all tied candidates are eliminated simultaneously.'}
+                      {contest.settings.tieBreakMethod === 'random' &&
+                        'When candidates tie for elimination, one is chosen randomly.'}
+                      {contest.settings.tieBreakMethod === 'keep-all' &&
+                        'When candidates tie for elimination, all tied candidates remain in the race.'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

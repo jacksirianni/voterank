@@ -131,11 +131,15 @@ model Contest {
   deduplicationEnabled Boolean @default(false)
   requireVoterId       Boolean @default(false)
   
+  // Admin token for access control
+  adminToken     String   @unique @default(cuid())
+  adminTokenExpiresAt DateTime? // Optional expiration for admin token
+
   // Branding (premium feature)
   primaryColor   String?
   secondaryColor String?
   logoUrl        String?
-  
+
   // Relations
   owner       User?              @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   workspace   Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
@@ -149,6 +153,7 @@ model Contest {
   @@index([ownerId])
   @@index([workspaceId])
   @@index([slug])
+  @@index([adminToken])
   @@index([status])
   @@index([closesAt])
 }

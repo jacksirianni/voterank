@@ -7,11 +7,46 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Helper to verify admin token
+async function verifyAdminToken(contestId: string, adminToken: string | null): Promise<boolean> {
+  if (!adminToken) return false;
+
+  const contest = await prisma.contest.findFirst({
+    where: {
+      OR: [{ id: contestId }, { slug: contestId }],
+      adminToken,
+    },
+    select: {
+      id: true,
+      adminTokenExpiresAt: true
+    },
+  });
+
+  if (!contest) return false;
+
+  // Check if token is expired
+  if (contest.adminTokenExpiresAt && contest.adminTokenExpiresAt < new Date()) {
+    return false;
+  }
+
+  return true;
+}
+
 // GET /api/contests/[id] - Get a single contest
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    
+    const searchParams = request.nextUrl.searchParams;
+    const adminToken = searchParams.get('adminToken');
+
+    // If adminToken is provided, verify it
+    if (adminToken) {
+      const isAdmin = await verifyAdminToken(id, adminToken);
+      if (!isAdmin) {
+        return NextResponse.json({ error: 'Invalid admin token' }, { status: 403 });
+      }
+    }
+
     // Try to find by slug first, then by id
     let contest = await prisma.contest.findUnique({
       where: { slug: id },
@@ -92,6 +127,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
 
+    // Verify admin token (required for updates)
+    const adminToken = body.adminToken || request.nextUrl.searchParams.get('adminToken');
+    const isAdmin = await verifyAdminToken(id, adminToken);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
     // Validate input
     const validationResult = updateContestSchema.safeParse(body);
     if (!validationResult.success) {
@@ -164,6 +206,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+
+    // Verify admin token (required for deletion)
+    const adminToken = request.nextUrl.searchParams.get('adminToken');
+    const isAdmin = await verifyAdminToken(id, adminToken);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
 
     // Find contest
     const contest = await prisma.contest.findFirst({

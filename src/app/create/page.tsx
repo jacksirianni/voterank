@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,20 +15,126 @@ export default function CreateContestPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [published, setPublished] = useState(false);
+  const [voteLink, setVoteLink] = useState('');
+  const [adminLink, setAdminLink] = useState('');
 
-  // Form state
+  // T2.1: Step 1 fields
   const [title, setTitle] = useState('');
+  const [titleError, setTitleError] = useState('');
+
+  const [slug, setSlug] = useState('');
+  const [slugError, setSlugError] = useState('');
+  const [slugAvailable, setSlugAvailable] = useState(false);
+  const [slugChecking, setSlugChecking] = useState(false);
+
+  const [contestType, setContestType] = useState('POLL');
   const [description, setDescription] = useState('');
+
+  // T2.2: Step 2 fields
   const [votingMethod, setVotingMethod] = useState('IRV');
-  const [visibility] = useState('PUBLIC_LINK'); // Default visibility, UI coming soon
   const [ballotStyle, setBallotStyle] = useState('DRAG');
-  const [requireVoterId, setRequireVoterId] = useState(false);
-  const [allowPartialRanking, setAllowPartialRanking] = useState(true);
+  const [winnersCount, setWinnersCount] = useState(1);
+  const [methodError, setMethodError] = useState('');
+
+  // Step 3: Options
   const [options, setOptions] = useState<Option[]>([
     { tempId: '1', name: '', description: '' },
     { tempId: '2', name: '', description: '' },
   ]);
 
+  // T2.3: Step 4 - Access Control
+  const [visibility, setVisibility] = useState('PUBLIC_LINK');
+  const [requireVoterId, setRequireVoterId] = useState(false);
+  const [allowPartialRanking, setAllowPartialRanking] = useState(true);
+  const [deduplicationEnabled, setDeduplicationEnabled] = useState(false);
+  const [allowedVoters, setAllowedVoters] = useState('');
+
+  // Auto-generate slug from title
+  useEffect(() => {
+    if (title && !slug) {
+      const autoSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 50);
+      setSlug(autoSlug);
+    }
+  }, [title, slug]);
+
+  // Debounced slug availability check
+  useEffect(() => {
+    if (!slug || slug.length < 3) {
+      setSlugAvailable(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSlugChecking(true);
+      try {
+        const res = await fetch(`/api/contests/slug-check?slug=${slug}`);
+        const data = await res.json();
+
+        if (data.available) {
+          setSlugAvailable(true);
+          setSlugError('');
+        } else {
+          setSlugAvailable(false);
+          setSlugError(data.error || 'Slug already taken');
+        }
+      } catch {
+        setSlugError('Failed to check availability');
+      } finally {
+        setSlugChecking(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [slug]);
+
+  // T2.1: Validate title
+  const validateTitle = (value: string) => {
+    if (value.trim().length < 3) {
+      setTitleError('Title must be at least 3 characters');
+      return false;
+    }
+    if (value.length > 200) {
+      setTitleError('Title cannot exceed 200 characters');
+      return false;
+    }
+    setTitleError('');
+    return true;
+  };
+
+  // T2.1: Format slug
+  const formatSlug = (value: string) => {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
+  // T2.2: Validate method combination
+  const validateMethodCombination = () => {
+    if (votingMethod === 'IRV' && winnersCount > 1) {
+      setMethodError('IRV is a single-winner method. Use STV for multi-winner elections.');
+      return false;
+    }
+    if (votingMethod === 'STV' && winnersCount < 2) {
+      setMethodError('STV requires at least 2 winners.');
+      return false;
+    }
+    setMethodError('');
+    return true;
+  };
+
+  useEffect(() => {
+    validateMethodCombination();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [votingMethod, winnersCount]);
+
+  // Option management
   const addOption = () => {
     setOptions([...options, { tempId: Date.now().toString(), name: '', description: '' }]);
   };
@@ -43,24 +149,46 @@ export default function CreateContestPage() {
     setOptions(options.map(o => o.tempId === tempId ? { ...o, [field]: value } : o));
   };
 
-  const handleSubmit = async () => {
+  // Step validation
+  const canProceedStep1 =
+    title.trim().length >= 3 &&
+    !titleError &&
+    slug.length >= 3 &&
+    !slugError &&
+    slugAvailable &&
+    contestType !== '';
+
+  const canProceedStep2 = !methodError;
+
+  const canProceedStep3 = options.filter(o => o.name.trim()).length >= 2;
+
+  const canProceedStep4 =
+    visibility !== 'RESTRICTED_LIST' ||
+    allowedVoters.split('\n').filter(v => v.trim()).length > 0;
+
+  // T2.4: Handle publish
+  const handlePublish = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Create contest
+      // 1. Create contest
       const contestRes = await fetch('/api/contests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
+          slug,
           description: description || undefined,
+          contestType,
           votingMethod,
           visibility,
           ballotStyle,
           requireVoterId,
+          deduplicationEnabled,
           settings: {
             allowPartialRanking,
+            winnersCount: votingMethod === 'STV' ? winnersCount : 1,
           },
         }),
       });
@@ -72,7 +200,7 @@ export default function CreateContestPage() {
 
       const contest = await contestRes.json();
 
-      // Create options
+      // 2. Create options
       const validOptions = options.filter(o => o.name.trim());
       for (const opt of validOptions) {
         await fetch(`/api/contests/${contest.id}/options`, {
@@ -85,16 +213,128 @@ export default function CreateContestPage() {
         });
       }
 
-      // Redirect to voting page
-      router.push(`/vote/${contest.slug}`);
+      // 3. Create allowed voters (if restricted)
+      if (visibility === 'RESTRICTED_LIST') {
+        const voters = allowedVoters.split('\n').filter(v => v.trim());
+        for (const voterId of voters) {
+          await fetch(`/api/contests/${contest.id}/allowed-voters`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voterId: voterId.trim() }),
+          });
+        }
+      }
+
+      // 4. Show success screen with links
+      const baseUrl = window.location.origin;
+      setVoteLink(`${baseUrl}/vote/${contest.slug}`);
+      setAdminLink(`${baseUrl}/dashboard/contest/${contest.id}?token=${contest.adminToken}`);
+      setPublished(true);
+      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create contest');
       setLoading(false);
     }
   };
 
-  const canProceedStep1 = title.trim().length >= 3;
-  const canProceedStep2 = options.filter(o => o.name.trim()).length >= 2;
+  // If published, show success screen
+  if (published) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">Contest Published!</h1>
+            <p className="text-slate-600">Your contest is ready for voters.</p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Vote link */}
+            <div className="card p-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Vote Link <span className="text-slate-500">(Share with voters)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={voteLink}
+                  readOnly
+                  className="input flex-1 font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(voteLink);
+                    alert('Link copied to clipboard!');
+                  }}
+                  className="btn-secondary px-6"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* Admin link */}
+            <div className="card p-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Admin Link <span className="text-amber-600">(Keep this secret!)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={adminLink}
+                  readOnly
+                  className="input flex-1 font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(adminLink);
+                    alert('Link copied to clipboard!');
+                  }}
+                  className="btn-secondary px-6"
+                >
+                  Copy
+                </button>
+              </div>
+              <p className="text-sm text-amber-600 mt-2 flex items-start gap-2">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Anyone with this link can manage your contest. Keep it safe!
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <button
+              onClick={() => router.push(voteLink)}
+              className="btn-secondary"
+            >
+              Preview Voting Page
+            </button>
+            <button
+              onClick={() => router.push(adminLink)}
+              className="btn-primary"
+            >
+              Manage Contest
+            </button>
+          </div>
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => router.push('/')}
+              className="text-slate-600 hover:text-slate-900 text-sm"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -113,43 +353,123 @@ export default function CreateContestPage() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Progress steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3, 4].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
                 step >= s ? 'bg-brand-500 text-white' : 'bg-slate-200 text-slate-500'
               }`}>
                 {s}
               </div>
-              {s < 3 && (
+              {s < 4 && (
                 <div className={`w-12 h-1 rounded ${step > s ? 'bg-brand-500' : 'bg-slate-200'}`} />
               )}
             </div>
           ))}
         </div>
 
-        {/* Step 1: Basic Info */}
+        {/* T2.1: Step 1 - Basic Info */}
         {step === 1 && (
           <div className="card p-6">
-            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Create New Contest</h1>
-            <p className="text-slate-600 mb-6">Start by giving your contest a name and description.</p>
+            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Basic Information</h1>
+            <p className="text-slate-600 mb-6">Give your contest a name and choose its type.</p>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Title */}
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
+                <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
                   Contest Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   id="title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="input"
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    validateTitle(e.target.value);
+                  }}
+                  onBlur={(e) => validateTitle(e.target.value)}
+                  className={`input ${titleError ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                   placeholder="e.g., Team Lunch Poll, Board Election 2024"
                 />
+                {titleError && (
+                  <p className="text-red-600 text-sm mt-1">{titleError}</p>
+                )}
               </div>
 
+              {/* Slug */}
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">
+                <label htmlFor="slug" className="block text-sm font-medium text-slate-700 mb-2">
+                  URL Slug <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-sm">voterank.app/vote/</span>
+                  <input
+                    type="text"
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => {
+                      const formatted = formatSlug(e.target.value);
+                      setSlug(formatted);
+                    }}
+                    className={`input flex-1 font-mono ${slugError ? 'border-red-300' : slugAvailable ? 'border-green-300' : ''}`}
+                    placeholder="my-contest-2024"
+                  />
+                </div>
+                {slugChecking && (
+                  <p className="text-slate-500 text-sm mt-1">Checking availability...</p>
+                )}
+                {!slugChecking && slugError && (
+                  <p className="text-red-600 text-sm mt-1">{slugError}</p>
+                )}
+                {!slugChecking && slugAvailable && slug.length >= 3 && (
+                  <p className="text-green-600 text-sm mt-1 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Available
+                  </p>
+                )}
+              </div>
+
+              {/* Contest Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Contest Type <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'POLL', label: 'Poll', desc: 'Quick decision poll', icon: '📊' },
+                    { value: 'ELECTION', label: 'Election', desc: 'Formal election', icon: '🗳️' },
+                    { value: 'SURVEY', label: 'Survey', desc: 'Multi-question survey', icon: '📋' },
+                    { value: 'RANKING', label: 'Ranking', desc: 'General ranking', icon: '🏆' },
+                  ].map(type => (
+                    <label
+                      key={type.value}
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        contestType === type.value
+                          ? 'border-brand-500 bg-brand-50'
+                          : 'border-slate-200 hover:border-brand-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="contestType"
+                        value={type.value}
+                        checked={contestType === type.value}
+                        onChange={(e) => setContestType(e.target.value)}
+                        className="sr-only"
+                      />
+                      <div className="text-2xl mb-2">{type.icon}</div>
+                      <div className="font-medium text-slate-900">{type.label}</div>
+                      <div className="text-xs text-slate-500">{type.desc}</div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
                   Description (optional)
                 </label>
                 <textarea
@@ -167,6 +487,156 @@ export default function CreateContestPage() {
                   disabled={!canProceedStep1}
                   className="btn-primary"
                 >
+                  Next: Voting Method →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* T2.2: Step 2 - Voting Method */}
+        {step === 2 && (
+          <div className="card p-6">
+            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Voting Method</h1>
+            <p className="text-slate-600 mb-6">Choose how votes will be counted.</p>
+
+            <div className="space-y-6">
+              {/* Voting Method */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Method <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'IRV', label: 'Instant Runoff Voting (IRV)', desc: 'Eliminates lowest candidate each round until one wins', singleWinner: true },
+                    { value: 'STV', label: 'Single Transferable Vote (STV)', desc: 'Multi-winner variant of IRV', singleWinner: false, disabled: true },
+                    { value: 'BORDA', label: 'Borda Count', desc: 'Points-based system', singleWinner: true, disabled: true },
+                    { value: 'APPROVAL', label: 'Approval Voting', desc: 'Vote for as many as you like', singleWinner: true, disabled: true },
+                  ].map(method => (
+                    <label
+                      key={method.value}
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all block ${
+                        votingMethod === method.value
+                          ? 'border-brand-500 bg-brand-50'
+                          : method.disabled
+                          ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                          : 'border-slate-200 hover:border-brand-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="votingMethod"
+                        value={method.value}
+                        checked={votingMethod === method.value}
+                        onChange={(e) => setVotingMethod(e.target.value)}
+                        disabled={method.disabled}
+                        className="sr-only"
+                      />
+                      <div className="flex items-start gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${
+                          votingMethod === method.value
+                            ? 'border-brand-500 bg-brand-500'
+                            : 'border-slate-300'
+                        }`}>
+                          {votingMethod === method.value && (
+                            <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="6" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-900">{method.label}</div>
+                          <div className="text-sm text-slate-500">{method.desc}</div>
+                          {method.disabled && <div className="text-xs text-brand-600 mt-1">Coming soon</div>}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Winners Count (for STV) */}
+              {votingMethod === 'STV' && (
+                <div>
+                  <label htmlFor="winnersCount" className="block text-sm font-medium text-slate-700 mb-2">
+                    Number of Winners <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="winnersCount"
+                    min="2"
+                    max="10"
+                    value={winnersCount}
+                    onChange={(e) => setWinnersCount(parseInt(e.target.value) || 2)}
+                    className="input w-32"
+                  />
+                  <p className="text-sm text-slate-500 mt-1">How many candidates should be elected?</p>
+                </div>
+              )}
+
+              {/* Ballot Style */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Ballot Style <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${
+                      ballotStyle === 'DRAG'
+                        ? 'border-brand-500 bg-brand-50'
+                        : 'border-slate-200 hover:border-brand-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="ballotStyle"
+                      value="DRAG"
+                      checked={ballotStyle === 'DRAG'}
+                      onChange={(e) => setBallotStyle(e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className="text-3xl mb-2">↕️</div>
+                    <div className="font-medium text-slate-900">Drag & Drop</div>
+                    <div className="text-xs text-slate-500">Reorder by dragging</div>
+                  </label>
+                  <label
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${
+                      ballotStyle === 'GRID'
+                        ? 'border-brand-500 bg-brand-50'
+                        : 'border-slate-200 hover:border-brand-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="ballotStyle"
+                      value="GRID"
+                      checked={ballotStyle === 'GRID'}
+                      onChange={(e) => setBallotStyle(e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className="text-3xl mb-2">🔢</div>
+                    <div className="font-medium text-slate-900">Number Grid</div>
+                    <div className="text-xs text-slate-500">Click to assign ranks</div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Method validation error */}
+              {methodError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-red-700 text-sm">{methodError}</p>
+                </div>
+              )}
+
+              <div className="pt-4 flex justify-between">
+                <button onClick={() => setStep(1)} className="btn-ghost">
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!canProceedStep2}
+                  className="btn-primary"
+                >
                   Next: Add Options →
                 </button>
               </div>
@@ -174,10 +644,10 @@ export default function CreateContestPage() {
           </div>
         )}
 
-        {/* Step 2: Options */}
-        {step === 2 && (
+        {/* Step 3: Options */}
+        {step === 3 && (
           <div className="card p-6">
-            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Add Choices</h1>
+            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Add Options</h1>
             <p className="text-slate-600 mb-6">Add at least 2 options for voters to rank.</p>
 
             <div className="space-y-4">
@@ -228,74 +698,86 @@ export default function CreateContestPage() {
               </button>
 
               <div className="pt-4 flex justify-between">
-                <button onClick={() => setStep(1)} className="btn-ghost">
+                <button onClick={() => setStep(2)} className="btn-ghost">
                   ← Back
                 </button>
                 <button
-                  onClick={() => setStep(3)}
-                  disabled={!canProceedStep2}
+                  onClick={() => setStep(4)}
+                  disabled={!canProceedStep3}
                   className="btn-primary"
                 >
-                  Next: Settings →
+                  Next: Access Control →
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: Settings */}
-        {step === 3 && (
+        {/* T2.3: Step 4 - Access Control */}
+        {step === 4 && (
           <div className="card p-6">
-            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Contest Settings</h1>
-            <p className="text-slate-600 mb-6">Configure how voting will work.</p>
+            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Access Control</h1>
+            <p className="text-slate-600 mb-6">Configure who can vote and how.</p>
 
             <div className="space-y-6">
-              {/* Voting Method */}
+              {/* Visibility */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Voting Method
+                  Who can vote? <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="space-y-2">
                   {[
-                    { value: 'IRV', label: 'Instant Runoff Voting', desc: 'Eliminates lowest candidate each round until one wins' },
-                    { value: 'BORDA', label: 'Borda Count', desc: 'Points-based system (higher rank = more points)', disabled: true },
-                    { value: 'APPROVAL', label: 'Approval Voting', desc: 'Vote for as many as you like', disabled: true },
-                  ].map(method => (
+                    {
+                      value: 'PUBLIC_LINK',
+                      label: 'Anyone with the link',
+                      desc: 'Public contest, no restrictions',
+                      icon: '🔗'
+                    },
+                    {
+                      value: 'RESTRICTED_LIST',
+                      label: 'Specific voter IDs only',
+                      desc: 'Only pre-approved voters can participate',
+                      icon: '📋'
+                    },
+                    {
+                      value: 'ORGANIZER_ONLY',
+                      label: 'Testing mode',
+                      desc: 'Only you can vote (for testing)',
+                      icon: '🔒'
+                    },
+                  ].map(vis => (
                     <label
-                      key={method.value}
-                      className={`p-4 border rounded-xl cursor-pointer transition-colors ${
-                        votingMethod === method.value
+                      key={vis.value}
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all block ${
+                        visibility === vis.value
                           ? 'border-brand-500 bg-brand-50'
-                          : method.disabled
-                          ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
                           : 'border-slate-200 hover:border-brand-300'
                       }`}
                     >
                       <input
                         type="radio"
-                        name="votingMethod"
-                        value={method.value}
-                        checked={votingMethod === method.value}
-                        onChange={(e) => setVotingMethod(e.target.value)}
-                        disabled={method.disabled}
+                        name="visibility"
+                        value={vis.value}
+                        checked={visibility === vis.value}
+                        onChange={(e) => setVisibility(e.target.value)}
                         className="sr-only"
                       />
                       <div className="flex items-start gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${
-                          votingMethod === method.value
+                        <div className="text-2xl">{vis.icon}</div>
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-900">{vis.label}</div>
+                          <div className="text-sm text-slate-500">{vis.desc}</div>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
+                          visibility === vis.value
                             ? 'border-brand-500 bg-brand-500'
                             : 'border-slate-300'
                         }`}>
-                          {votingMethod === method.value && (
+                          {visibility === vis.value && (
                             <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="6" />
                             </svg>
                           )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-900">{method.label}</div>
-                          <div className="text-sm text-slate-500">{method.desc}</div>
-                          {method.disabled && <div className="text-xs text-brand-600 mt-1">Coming soon</div>}
                         </div>
                       </div>
                     </label>
@@ -303,101 +785,86 @@ export default function CreateContestPage() {
                 </div>
               </div>
 
-              {/* Ballot Style */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Ballot Style
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label
-                    className={`p-4 border rounded-xl cursor-pointer transition-colors text-center ${
-                      ballotStyle === 'DRAG'
-                        ? 'border-brand-500 bg-brand-50'
-                        : 'border-slate-200 hover:border-brand-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="ballotStyle"
-                      value="DRAG"
-                      checked={ballotStyle === 'DRAG'}
-                      onChange={(e) => setBallotStyle(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="text-2xl mb-1">↕️</div>
-                    <div className="font-medium text-slate-900">Drag & Drop</div>
-                    <div className="text-xs text-slate-500">Reorder by dragging</div>
+              {/* Allowed voters list */}
+              {visibility === 'RESTRICTED_LIST' && (
+                <div>
+                  <label htmlFor="allowedVoters" className="block text-sm font-medium text-slate-700 mb-2">
+                    Allowed Voter IDs <span className="text-red-500">*</span>
                   </label>
-                  <label
-                    className={`p-4 border rounded-xl cursor-pointer transition-colors text-center ${
-                      ballotStyle === 'GRID'
-                        ? 'border-brand-500 bg-brand-50'
-                        : 'border-slate-200 hover:border-brand-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="ballotStyle"
-                      value="GRID"
-                      checked={ballotStyle === 'GRID'}
-                      onChange={(e) => setBallotStyle(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="text-2xl mb-1">🔢</div>
-                    <div className="font-medium text-slate-900">Number Grid</div>
-                    <div className="text-xs text-slate-500">Click to assign ranks</div>
-                  </label>
+                  <textarea
+                    id="allowedVoters"
+                    value={allowedVoters}
+                    onChange={(e) => setAllowedVoters(e.target.value)}
+                    className="input min-h-[150px] font-mono text-sm"
+                    placeholder="Enter voter IDs, one per line:&#10;student123&#10;faculty@university.edu&#10;john.doe@company.com"
+                  />
+                  <p className="text-sm text-slate-600 mt-2">
+                    {allowedVoters.split('\n').filter(v => v.trim()).length} voter(s) will be allowed
+                  </p>
                 </div>
-              </div>
+              )}
 
-              {/* Options */}
+              {/* Additional settings */}
               <div className="space-y-3">
-                <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+                <label className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
                   <input
                     type="checkbox"
                     checked={requireVoterId}
                     onChange={(e) => setRequireVoterId(e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+                    className="w-5 h-5 rounded border-slate-300 text-brand-500 focus:ring-brand-500 mt-0.5"
                   />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-slate-900">Require Voter ID</div>
-                    <div className="text-sm text-slate-500">Voters must enter an ID (email, student ID, etc.)</div>
+                    <div className="text-sm text-slate-500">Ask all voters to enter an ID (email, student ID, etc.)</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+                <label className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deduplicationEnabled}
+                    onChange={(e) => setDeduplicationEnabled(e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-300 text-brand-500 focus:ring-brand-500 mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900">Block Duplicate Votes</div>
+                    <div className="text-sm text-slate-500">Prevent voting from the same device multiple times</div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
                   <input
                     type="checkbox"
                     checked={allowPartialRanking}
                     onChange={(e) => setAllowPartialRanking(e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+                    className="w-5 h-5 rounded border-slate-300 text-brand-500 focus:ring-brand-500 mt-0.5"
                   />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-slate-900">Allow Partial Ranking</div>
-                    <div className="text-sm text-slate-500">Voters can rank only some options</div>
+                    <div className="text-sm text-slate-500">Voters can rank only some options instead of all</div>
                   </div>
                 </label>
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
-                  {error}
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
 
               <div className="pt-4 flex justify-between">
-                <button onClick={() => setStep(2)} className="btn-ghost">
+                <button onClick={() => setStep(3)} className="btn-ghost">
                   ← Back
                 </button>
                 <button
-                  onClick={handleSubmit}
-                  disabled={loading}
+                  onClick={handlePublish}
+                  disabled={loading || !canProceedStep4}
                   className="btn-primary"
                 >
                   {loading ? (
                     <>
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                      Creating...
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block"></span>
+                      Creating Contest...
                     </>
                   ) : (
                     'Create Contest'
@@ -409,14 +876,26 @@ export default function CreateContestPage() {
         )}
 
         {/* Summary sidebar preview */}
-        {step === 3 && (
+        {step >= 2 && step < 4 && (
           <div className="mt-6 card p-4 bg-slate-50">
-            <div className="text-sm font-medium text-slate-700 mb-2">Contest Summary</div>
-            <div className="space-y-1 text-sm text-slate-600">
-              <div><strong>Title:</strong> {title}</div>
-              <div><strong>Options:</strong> {options.filter(o => o.name.trim()).length}</div>
-              <div><strong>Method:</strong> {votingMethod}</div>
-              <div><strong>Style:</strong> {ballotStyle === 'DRAG' ? 'Drag & Drop' : 'Number Grid'}</div>
+            <div className="text-sm font-medium text-slate-700 mb-3">Contest Summary</div>
+            <div className="space-y-2 text-sm text-slate-600">
+              <div><strong>Title:</strong> {title || '(not set)'}</div>
+              <div><strong>Slug:</strong> {slug || '(not set)'}</div>
+              <div><strong>Type:</strong> {contestType}</div>
+              {step >= 3 && (
+                <>
+                  <div><strong>Method:</strong> {votingMethod}</div>
+                  <div><strong>Ballot:</strong> {ballotStyle === 'DRAG' ? 'Drag & Drop' : 'Number Grid'}</div>
+                  {votingMethod === 'STV' && <div><strong>Winners:</strong> {winnersCount}</div>}
+                </>
+              )}
+              {step === 4 && (
+                <>
+                  <div><strong>Options:</strong> {options.filter(o => o.name.trim()).length}</div>
+                  <div><strong>Access:</strong> {visibility.replace('_', ' ')}</div>
+                </>
+              )}
             </div>
           </div>
         )}

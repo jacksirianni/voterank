@@ -40,7 +40,7 @@ interface Contest {
   _count?: { ballots: number };
 }
 
-type VotingStep = 'loading' | 'voter-id' | 'voting' | 'submitting' | 'success' | 'error' | 'closed';
+type VotingStep = 'loading' | 'voter-id' | 'voting' | 'review' | 'submitting' | 'success' | 'error' | 'closed' | 'paused';
 
 export default function VotePage() {
   const params = useParams();
@@ -55,6 +55,7 @@ export default function VotePage() {
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [rankings, setRankings] = useState<Record<string, string[]>>({});
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
+  const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
 
   // Generate a simple device fingerprint
   useEffect(() => {
@@ -89,7 +90,11 @@ export default function VotePage() {
         const data = await res.json();
         setContest(data);
 
-        // Check if contest is open
+        // Check contest status
+        if (data.status === 'PAUSED') {
+          setStep('paused');
+          return;
+        }
         if (data.status !== 'OPEN') {
           setStep('closed');
           return;
@@ -133,6 +138,9 @@ export default function VotePage() {
   const handleNext = () => {
     if (!isLastCategory) {
       setCurrentCategoryIndex(prev => prev + 1);
+    } else {
+      // Go to review screen on last category
+      setStep('review');
     }
   };
 
@@ -147,6 +155,7 @@ export default function VotePage() {
 
     setStep('submitting');
     setError(null);
+    setSubmissionWarning(null);
 
     try {
       // Submit ballots for each category
@@ -173,21 +182,48 @@ export default function VotePage() {
           const data = await res.json();
           throw new Error(data.error || 'Failed to submit vote');
         }
+
+        // Check for warnings
+        const data = await res.json();
+        if (data.warning) {
+          setSubmissionWarning(data.warning);
+        } else if (data.notice) {
+          setSubmissionWarning(data.notice);
+        }
       }
 
       setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit vote');
-      setStep('voting');
+      setStep('review');
     }
   };
 
-  const handleVoterIdSubmit = (e: React.FormEvent) => {
+  const handleVoterIdSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voterId.trim()) {
       setError('Please enter your voter ID');
       return;
     }
+
+    // Check if voter is on restricted list
+    if (contest?.visibility === 'RESTRICTED_LIST') {
+      setStep('submitting');
+      try {
+        const res = await fetch(`/api/contests/${contest.id}/check-voter?voterId=${encodeURIComponent(voterId)}`);
+        if (!res.ok) {
+          const data = await res.json();
+          setError(data.error || 'You are not authorized to vote in this contest.');
+          setStep('voter-id');
+          return;
+        }
+      } catch {
+        setError('Failed to verify voter eligibility.');
+        setStep('voter-id');
+        return;
+      }
+    }
+
     setError(null);
     setStep('voting');
   };
@@ -217,6 +253,28 @@ export default function VotePage() {
           <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Oops!</h1>
           <p className="text-slate-600 mb-6">{error || 'Something went wrong'}</p>
           <Link href="/" className="btn-primary">
+            Go Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Paused state
+  if (step === 'paused') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">{contest?.title}</h1>
+          <p className="text-slate-600 mb-6">
+            Voting is temporarily paused. Please check back later.
+          </p>
+          <Link href="/" className="btn-ghost">
             Go Home
           </Link>
         </div>
@@ -262,7 +320,19 @@ export default function VotePage() {
             </svg>
           </div>
           <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">Vote Submitted!</h1>
-          <p className="text-slate-600 mb-8">Thank you for participating. Your vote has been recorded.</p>
+          <p className="text-slate-600 mb-4">Thank you for participating. Your vote has been recorded.</p>
+
+          {submissionWarning && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p>{submissionWarning}</p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3">
             <Link href={`/vote/${slug}/results`} className="btn-primary w-full block">
               View Results
@@ -341,6 +411,96 @@ export default function VotePage() {
               </button>
             </form>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Review step
+  if (step === 'review') {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-display font-bold text-slate-900">Review Your Vote</h1>
+            <p className="text-slate-600 mt-2">Please confirm your rankings before submitting.</p>
+          </div>
+
+          <div className="space-y-6">
+            {categories.map((category, catIndex) => {
+              const categoryRanking = rankings[category.id] || [];
+              const rankedOptions = categoryRanking
+                .map(id => category.options.find(o => o.id === id))
+                .filter((o): o is Option => o !== undefined);
+
+              return (
+                <div key={category.id} className="card p-6">
+                  {category.title && (
+                    <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                      {categories.length > 1 && `${catIndex + 1}. `}
+                      {category.title}
+                    </h2>
+                  )}
+
+                  {rankedOptions.length === 0 ? (
+                    <p className="text-slate-500 italic">No ranking submitted for this category</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {rankedOptions.map((option, index) => (
+                        <div key={option.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center font-semibold text-sm">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-slate-900">{option.name}</div>
+                            {option.description && (
+                              <div className="text-sm text-slate-500">{option.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {error && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+              {error}
+            </div>
+          )}
+
+          <div className="mt-8 flex gap-4">
+            <button
+              onClick={() => {
+                setStep('voting');
+                setCurrentCategoryIndex(categories.length - 1);
+              }}
+              className="btn-ghost flex-1"
+            >
+              ← Edit Rankings
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="btn-primary flex-1"
+              disabled={step === 'submitting'}
+            >
+              {step === 'submitting' ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block"></span>
+                  Submitting...
+                </>
+              ) : (
+                'Confirm & Submit Vote'
+              )}
+            </button>
+          </div>
+
+          <p className="mt-6 text-xs text-center text-slate-400">
+            Once submitted, your vote cannot be changed.
+          </p>
         </div>
       </div>
     );
@@ -431,26 +591,13 @@ export default function VotePage() {
               ← Previous
             </button>
           )}
-          {!isLastCategory ? (
-            <button onClick={handleNext} className="btn-primary flex-1" disabled={currentRanking.length === 0}>
-              Next →
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              className="btn-primary flex-1"
-              disabled={step === 'submitting' || (currentRanking.length === 0 && !contest?.settings?.allowPartialRanking)}
-            >
-              {step === 'submitting' ? (
-                <>
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                  Submitting...
-                </>
-              ) : (
-                'Submit Vote'
-              )}
-            </button>
-          )}
+          <button
+            onClick={handleNext}
+            className="btn-primary flex-1"
+            disabled={!isLastCategory && currentRanking.length === 0}
+          >
+            {isLastCategory ? 'Review Vote →' : 'Next →'}
+          </button>
         </div>
 
         {/* Disclaimer */}

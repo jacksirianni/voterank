@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 export const createContestSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
+  slug: z.string().min(3, 'Slug must be at least 3 characters').max(100, 'Slug too long').regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens').optional(),
   description: z.string().max(5000, 'Description too long').optional(),
   contestType: z.enum(['POLL', 'ELECTION', 'SURVEY', 'RANKING']).default('POLL'),
   votingMethod: z.enum(['IRV', 'STV', 'BORDA', 'CONDORCET', 'APPROVAL', 'SCORE', 'STAR', 'PLURALITY']).default('IRV'),
@@ -18,6 +19,7 @@ export const createContestSchema = z.object({
     allowPartialRanking: z.boolean().default(true),
     showLiveResults: z.boolean().default(false),
     maxRanks: z.number().min(1).max(100).optional(),
+    winnersCount: z.number().min(1).max(100).default(1),
     tieBreakMethod: z.enum(['eliminate-all', 'previous-round', 'random']).default('eliminate-all'),
   }).default({}),
   deduplicationEnabled: z.boolean().default(false),

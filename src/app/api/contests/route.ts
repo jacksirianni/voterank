@@ -69,18 +69,29 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
-    // Generate unique slug
-    let slug = createContestSlug();
-    let attempts = 0;
-    while (attempts < 5) {
-      const existing = await prisma.contest.findUnique({ where: { slug } });
-      if (!existing) break;
+    // Use custom slug if provided, otherwise generate one
+    let slug: string;
+    if (data.slug) {
+      // Verify custom slug is available
+      const existing = await prisma.contest.findUnique({ where: { slug: data.slug } });
+      if (existing) {
+        throw new AppError('Slug already taken', 'SLUG_TAKEN', 409);
+      }
+      slug = data.slug;
+    } else {
+      // Generate unique slug
       slug = createContestSlug();
-      attempts++;
-    }
+      let attempts = 0;
+      while (attempts < 5) {
+        const existing = await prisma.contest.findUnique({ where: { slug } });
+        if (!existing) break;
+        slug = createContestSlug();
+        attempts++;
+      }
 
-    if (attempts >= 5) {
-      throw new AppError('Could not generate unique contest slug', 'SLUG_GENERATION_FAILED', 500);
+      if (attempts >= 5) {
+        throw new AppError('Could not generate unique contest slug', 'SLUG_GENERATION_FAILED', 500);
+      }
     }
 
     // Create contest
