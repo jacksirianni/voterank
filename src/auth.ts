@@ -5,27 +5,44 @@ import GitHubProvider from 'next-auth/providers/github';
 import ResendProvider from 'next-auth/providers/resend';
 import prisma from '@/lib/prisma';
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    // Email magic links via Resend
+// Build providers array conditionally based on available credentials
+const providers = [];
+
+// Email magic links (always included if RESEND_API_KEY is available)
+if (process.env.RESEND_API_KEY) {
+  providers.push(
     ResendProvider({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM || 'noreply@voterank.app',
-    }),
-    // Google OAuth
+    })
+  );
+}
+
+// Google OAuth (only if credentials are provided)
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
-    }),
-    // GitHub OAuth
+    })
+  );
+}
+
+// GitHub OAuth (only if credentials are provided)
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  providers.push(
     GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
-    }),
-  ],
+    })
+  );
+}
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers,
   pages: {
     signIn: '/login',
     verifyRequest: '/auth/check-email',
