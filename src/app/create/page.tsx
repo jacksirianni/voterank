@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { slugify, generateSlugSuggestions } from '@/lib/slug';
 
 interface Option {
   tempId: string;
@@ -23,10 +24,15 @@ export default function CreateContestPage() {
   const [title, setTitle] = useState('');
   const [titleError, setTitleError] = useState('');
 
-  const [slug, setSlug] = useState('');
+  // Smart slug state
+  const [slugMode, setSlugMode] = useState<'auto' | 'manual'>('auto');
+  const [slugBase, setSlugBase] = useState('');
+  const [slugFinal, setSlugFinal] = useState('');
   const [slugError, setSlugError] = useState('');
   const [slugAvailable, setSlugAvailable] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
+  const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [contestType, setContestType] = useState('POLL');
   const [description, setDescription] = useState('');
@@ -50,47 +56,112 @@ export default function CreateContestPage() {
   const [deduplicationEnabled, setDeduplicationEnabled] = useState(false);
   const [allowedVoters, setAllowedVoters] = useState('');
 
-  // Auto-generate slug from title
-  useEffect(() => {
-    if (title && !slug) {
-      const autoSlug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 50);
-      setSlug(autoSlug);
-    }
-  }, [title, slug]);
+  // Check slug availability
+  const checkSlugAvailability = useCallback(async (slug: string): Promise<boolean> => {
+    if (slug.length < 3) return false;
 
-  // Debounced slug availability check
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const res = await fetch(`/api/slug-availability?slug=${encodeURIComponent(slug)}`, {
+        signal: controller.signal,
+      });
+      const data = await res.json();
+
+      // Ignore if this request was aborted
+      if (controller.signal.aborted) return false;
+
+      return data.available === true;
+    } catch (error) {
+      // Ignore abort errors
+      if ((error as Error).name === 'AbortError') return false;
+      console.error('Slug check error:', error);
+      return false;
+    }
+  }, []);
+
+  // Find unique slug in auto mode
+  const findUniqueSlug = useCallback(async (base: string) => {
+    const cleanBase = slugify(base);
+    if (!cleanBase || cleanBase.length < 3) return null;
+
+    // Try base first
+    const baseAvailable = await checkSlugAvailability(cleanBase);
+    if (baseAvailable) return cleanBase;
+
+    // Try numbered variations
+    for (let i = 2; i <= 10; i++) {
+      const candidate = `${cleanBase}-${i}`;
+      const available = await checkSlugAvailability(candidate);
+      if (available) return candidate;
+    }
+
+    return null;
+  }, [checkSlugAvailability]);
+
+  // Auto mode: Update slug when title changes
   useEffect(() => {
-    if (!slug || slug.length < 3) {
-      setSlugAvailable(false);
+    if (slugMode !== 'auto' || !title) return;
+
+    const newBase = slugify(title);
+    if (newBase === slugBase) return; // No change
+
+    setSlugBase(newBase);
+
+    // Find unique slug
+    const updateSlug = async () => {
+      setSlugChecking(true);
+      const uniqueSlug = await findUniqueSlug(title);
+      if (uniqueSlug) {
+        setSlugFinal(uniqueSlug);
+        setSlugAvailable(true);
+        setSlugError('');
+        setSlugSuggestions([]);
+      } else {
+        setSlugFinal(newBase);
+        setSlugAvailable(false);
+        setSlugError('Unable to find available slug');
+        setSlugSuggestions(generateSlugSuggestions(newBase));
+      }
+      setSlugChecking(false);
+    };
+
+    updateSlug();
+  }, [title, slugMode, slugBase, findUniqueSlug]);
+
+  // Manual mode: Debounced availability check
+  useEffect(() => {
+    if (slugMode !== 'manual' || !slugFinal || slugFinal.length < 3) {
+      if (slugMode === 'manual' && slugFinal.length > 0 && slugFinal.length < 3) {
+        setSlugAvailable(false);
+        setSlugError('Slug must be at least 3 characters');
+      }
       return;
     }
 
+    setSlugChecking(true);
     const timer = setTimeout(async () => {
-      setSlugChecking(true);
-      try {
-        const res = await fetch(`/api/contests/slug-check?slug=${slug}`);
-        const data = await res.json();
+      const available = await checkSlugAvailability(slugFinal);
 
-        if (data.available) {
-          setSlugAvailable(true);
-          setSlugError('');
-        } else {
-          setSlugAvailable(false);
-          setSlugError(data.error || 'Slug already taken');
-        }
-      } catch {
-        setSlugError('Failed to check availability');
-      } finally {
-        setSlugChecking(false);
+      setSlugAvailable(available);
+      if (available) {
+        setSlugError('');
+        setSlugSuggestions([]);
+      } else {
+        setSlugError('This slug is not available');
+        setSlugSuggestions(generateSlugSuggestions(slugFinal));
       }
+      setSlugChecking(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [slug]);
+  }, [slugFinal, slugMode, checkSlugAvailability]);
 
   // T2.1: Validate title
   const validateTitle = (value: string) => {
@@ -106,13 +177,17 @@ export default function CreateContestPage() {
     return true;
   };
 
-  // T2.1: Format slug
-  const formatSlug = (value: string) => {
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+  // Handle manual slug edit
+  const handleSlugEdit = (value: string) => {
+    setSlugMode('manual');
+    const formatted = slugify(value);
+    setSlugFinal(formatted);
+  };
+
+  // Reset to auto mode
+  const resetToAutoMode = () => {
+    setSlugMode('auto');
+    setSlugBase(''); // Force regeneration
   };
 
   // T2.2: Validate method combination
@@ -153,9 +228,10 @@ export default function CreateContestPage() {
   const canProceedStep1 =
     title.trim().length >= 3 &&
     !titleError &&
-    slug.length >= 3 &&
+    slugFinal.length >= 3 &&
     !slugError &&
     slugAvailable &&
+    !slugChecking &&
     contestType !== '';
 
   const canProceedStep2 = !methodError;
@@ -178,7 +254,7 @@ export default function CreateContestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          slug,
+          slug: slugFinal,
           description: description || undefined,
           contestType,
           votingMethod,
@@ -401,34 +477,117 @@ export default function CreateContestPage() {
                 <label htmlFor="slug" className="block text-sm font-medium text-slate-700 mb-2">
                   URL Slug <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 text-sm">voterank.app/vote/</span>
-                  <input
-                    type="text"
-                    id="slug"
-                    value={slug}
-                    onChange={(e) => {
-                      const formatted = formatSlug(e.target.value);
-                      setSlug(formatted);
-                    }}
-                    className={`input flex-1 font-mono ${slugError ? 'border-red-300' : slugAvailable ? 'border-green-300' : ''}`}
-                    placeholder="my-contest-2024"
-                  />
+                <div className="relative">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm whitespace-nowrap">voterank.app/vote/</span>
+                    <input
+                      type="text"
+                      id="slug"
+                      value={slugFinal}
+                      onChange={(e) => handleSlugEdit(e.target.value)}
+                      className={`input flex-1 font-mono ${
+                        slugError
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                          : slugAvailable
+                          ? 'border-green-300 focus:border-green-500 focus:ring-green-500/20'
+                          : ''
+                      }`}
+                      placeholder="my-contest-2024"
+                    />
+                  </div>
+
+                  {/* Status indicators */}
+                  <div className="mt-2 space-y-2">
+                    {/* Checking indicator */}
+                    {slugChecking && (
+                      <p className="text-slate-500 text-sm flex items-center gap-1.5">
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Checking availability…
+                      </p>
+                    )}
+
+                    {/* Error message */}
+                    {!slugChecking && slugError && (
+                      <div className="space-y-2">
+                        <p className="text-red-600 text-sm flex items-center gap-1.5">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          {slugError}
+                        </p>
+                        {/* Suggestions */}
+                        {slugSuggestions.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            <span className="text-xs text-slate-600">Try:</span>
+                            {slugSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => {
+                                  setSlugMode('manual');
+                                  setSlugFinal(suggestion);
+                                }}
+                                className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-mono transition-colors"
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Available indicator */}
+                    {!slugChecking && slugAvailable && slugFinal.length >= 3 && (
+                      <p className="text-green-600 text-sm flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Available
+                      </p>
+                    )}
+
+                    {/* Mode indicator */}
+                    <div className="flex items-center gap-2 text-xs">
+                      {slugMode === 'auto' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Auto-generated
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSlugMode('manual')}
+                            className="text-brand-600 hover:text-brand-700 font-medium"
+                          >
+                            Customize
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Custom slug
+                          </span>
+                          <button
+                            type="button"
+                            onClick={resetToAutoMode}
+                            className="text-brand-600 hover:text-brand-700 font-medium"
+                          >
+                            Reset to auto
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                {slugChecking && (
-                  <p className="text-slate-500 text-sm mt-1">Checking availability...</p>
-                )}
-                {!slugChecking && slugError && (
-                  <p className="text-red-600 text-sm mt-1">{slugError}</p>
-                )}
-                {!slugChecking && slugAvailable && slug.length >= 3 && (
-                  <p className="text-green-600 text-sm mt-1 flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Available
-                  </p>
-                )}
               </div>
 
               {/* Contest Type */}
@@ -881,7 +1040,7 @@ export default function CreateContestPage() {
             <div className="text-sm font-medium text-slate-700 mb-3">Contest Summary</div>
             <div className="space-y-2 text-sm text-slate-600">
               <div><strong>Title:</strong> {title || '(not set)'}</div>
-              <div><strong>Slug:</strong> {slug || '(not set)'}</div>
+              <div><strong>Slug:</strong> {slugFinal || '(not set)'}</div>
               <div><strong>Type:</strong> {contestType}</div>
               {step >= 3 && (
                 <>
