@@ -56,6 +56,7 @@ export default function VotePage() {
   const [rankings, setRankings] = useState<Record<string, string[]>>({});
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generate a simple device fingerprint
   useEffect(() => {
@@ -153,6 +154,7 @@ export default function VotePage() {
   const handleSubmit = async () => {
     if (!contest) return;
 
+    setIsSubmitting(true);
     setStep('submitting');
     setError(null);
     setSubmissionWarning(null);
@@ -196,6 +198,8 @@ export default function VotePage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit vote');
       setStep('review');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -485,9 +489,9 @@ export default function VotePage() {
             <button
               onClick={handleSubmit}
               className="btn-primary flex-1"
-              disabled={step === 'submitting'}
+              disabled={isSubmitting}
             >
-              {step === 'submitting' ? (
+              {isSubmitting ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block"></span>
                   Submitting...
