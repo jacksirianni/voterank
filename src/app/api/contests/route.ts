@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createContestSchema } from '@/lib/validations';
 import { createContestSlug, createErrorResponse, AppError } from '@/lib/utils';
+import { auth } from '@/auth';
 
 // GET /api/contests - List contests (for dashboard)
 export async function GET(request: NextRequest) {
@@ -56,8 +57,12 @@ export async function GET(request: NextRequest) {
 // POST /api/contests - Create a new contest
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated
+    const session = await auth();
+    const ownerId = session?.user?.id || null;
+
     const body = await request.json();
-    
+
     // Validate input
     const validationResult = createContestSchema.safeParse(body);
     if (!validationResult.success) {
@@ -111,6 +116,7 @@ export async function POST(request: NextRequest) {
         deduplicationEnabled: data.deduplicationEnabled,
         requireVoterId: data.requireVoterId,
         status: 'DRAFT',
+        ownerId, // Link contest to authenticated user (null if not logged in)
       },
       include: {
         options: true,

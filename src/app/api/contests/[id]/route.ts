@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { updateContestSchema } from '@/lib/validations';
 import { createErrorResponse, isContestOpen } from '@/lib/utils';
+import { auth } from '@/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -39,12 +40,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchParams = request.nextUrl.searchParams;
     const adminToken = searchParams.get('adminToken');
 
-    // If adminToken is provided, verify it
+    // Check authentication: either admin token OR authenticated user who owns the contest
+    const session = await auth();
+    let hasAccess = false;
+
+    // Check admin token access
     if (adminToken) {
       const isAdmin = await verifyAdminToken(id, adminToken);
-      if (!isAdmin) {
-        return NextResponse.json({ error: 'Invalid admin token' }, { status: 403 });
+      if (isAdmin) {
+        hasAccess = true;
       }
+    }
+
+    // Check session-based access (user owns the contest)
+    if (!hasAccess && session?.user) {
+      const contestOwnership = await prisma.contest.findFirst({
+        where: {
+          OR: [{ id }, { slug: id }],
+          ownerId: session.user.id,
+        },
+        select: { id: true },
+      });
+      if (contestOwnership) {
+        hasAccess = true;
+      }
+    }
+
+    // For dashboard access, require authentication
+    if (!hasAccess && request.url.includes('/dashboard/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Try to find by slug first, then by id

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createErrorResponse } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 // Reserved slugs that cannot be used
 const RESERVED_SLUGS = [
   'create',

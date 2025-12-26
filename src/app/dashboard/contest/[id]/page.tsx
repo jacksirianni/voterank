@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 interface Option {
@@ -61,6 +62,7 @@ export default function ContestManagementPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status: sessionStatus } = useSession();
   const contestId = params.id as string;
   const adminToken = searchParams.get('token');
 
@@ -92,9 +94,17 @@ export default function ContestManagementPage() {
 
   useEffect(() => {
     const fetchContest = async () => {
-      // Check if admin token is provided
-      if (!adminToken) {
-        setAuthError('Admin access required. Please use the admin link provided when you created this contest.');
+      // Wait for session to load
+      if (sessionStatus === 'loading') {
+        return;
+      }
+
+      // Check if user has access via token OR session
+      const hasTokenAccess = !!adminToken;
+      const hasSessionAccess = sessionStatus === 'authenticated' && !!session?.user;
+
+      if (!hasTokenAccess && !hasSessionAccess) {
+        setAuthError('Admin access required. Please sign in or use the admin link provided when you created this contest.');
         setLoading(false);
         return;
       }
@@ -118,7 +128,7 @@ export default function ContestManagementPage() {
       }
     };
     fetchContest();
-  }, [contestId, adminToken]);
+  }, [contestId, adminToken, sessionStatus, session]);
 
   // Fetch ballots when votes tab is selected
   useEffect(() => {
