@@ -132,7 +132,7 @@ model Contest {
   requireVoterId       Boolean @default(false)
   
   // Admin token for access control
-  adminToken     String   @unique @default(cuid())
+  adminToken     String?   @unique @default(cuid())
   adminTokenExpiresAt DateTime? // Optional expiration for admin token
 
   // Branding (premium feature)
