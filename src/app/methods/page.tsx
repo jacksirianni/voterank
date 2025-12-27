@@ -98,7 +98,7 @@ export default function MethodsPage() {
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mb-6">
             Different decisions call for different voting systems. VoteRank supports multiple methods
-            so you can pick what fits your group… whether you're choosing one winner, electing a committee,
+            so you can pick what fits your group… whether you&apos;re choosing one winner, electing a committee,
             or prioritizing a roadmap.
           </p>
           <div className="inline-block px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
