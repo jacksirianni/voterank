@@ -68,7 +68,7 @@ export default function HomePage() {
                 </svg>
               </Link>
               <Link
-                href="/vote/demo-election"
+                href="/demo"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-xl font-semibold text-lg hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50 transition-all hover:shadow-lg"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,7 +81,7 @@ export default function HomePage() {
 
             {/* Quick Link */}
             <Link
-              href="/vote/demo-election/results"
+              href="/demo"
               className="group inline-flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700 font-medium"
             >
               <span>View sample results</span>

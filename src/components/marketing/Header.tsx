@@ -60,7 +60,7 @@ export function Header() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/vote/demo-election" className="btn-secondary text-sm px-4 py-2">
+            <Link href="/demo" className="btn-secondary text-sm px-4 py-2">
               Try Demo
             </Link>
             <Link href="/create" className="btn-primary text-sm px-4 py-2">
@@ -132,7 +132,7 @@ export function Header() {
             </Link>
             <div className="pt-4 space-y-2">
               <Link
-                href="/vote/demo-election"
+                href="/demo"
                 className="btn-secondary w-full text-center"
                 onClick={() => setMobileMenuOpen(false)}
               >
