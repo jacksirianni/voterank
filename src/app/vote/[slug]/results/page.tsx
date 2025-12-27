@@ -96,7 +96,7 @@ export default function ResultsPage() {
         }
 
         // Determine categories
-        const categories = contestData.categories.length > 0
+        const categories = contestData.categories?.length > 0
           ? contestData.categories
           : [{ id: 'default', title: 'Results' }];
 
@@ -197,7 +197,7 @@ export default function ResultsPage() {
   }
 
   const currentResults = selectedCategory ? results[selectedCategory] : null;
-  const categories = contest.categories.length > 0 ? contest.categories : [{ id: 'default', title: 'Results' }];
+  const categories = contest?.categories?.length > 0 ? contest.categories : [{ id: 'default', title: 'Results' }];
 
   return (
     <div className="min-h-screen bg-slate-50">
