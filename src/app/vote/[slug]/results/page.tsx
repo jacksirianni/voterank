@@ -197,8 +197,8 @@ export default function ResultsPage() {
     );
   }
 
-  const currentResults = selectedCategory ? results[selectedCategory] : null;
   const categories = contest?.categories?.length > 0 ? contest.categories : [{ id: 'default', title: 'Results' }];
+  const currentResults = selectedCategory ? results[selectedCategory] : (results['default'] || null);
 
   return (
     <div className="min-h-screen bg-slate-50">
