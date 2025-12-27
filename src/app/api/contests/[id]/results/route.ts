@@ -51,6 +51,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
 
       if (cached) {
+        // Filter options by category if specified
+        let options = contest.options;
+        if (categoryId) {
+          options = options.filter((o: { categoryId: string | null }) => o.categoryId === categoryId);
+        }
+
         return NextResponse.json({
           cached: true,
           computedAt: cached.computedAt,
@@ -58,6 +64,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           rounds: cached.rounds,
           summary: cached.summary,
           integrity: cached.integrity,
+          options: options.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })),
         });
       }
     }
@@ -148,6 +155,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       summary: result.summary,
       integrity: result.integrity,
       computeTimeMs: result.computeTimeMs,
+      options: tabulationOptions.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })),
     });
   } catch (error) {
     console.error('Error computing results:', error);
