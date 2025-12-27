@@ -90,14 +90,14 @@ async function main() {
   // Create the homepage demo contest - Ice Cream Flavor
   const demoContest = await prisma.contest.upsert({
     where: { slug: 'demo-election' },
-    update: {},
+    update: { status: ContestStatus.OPEN }, // Always keep demo OPEN
     create: {
       slug: 'demo-election',
       title: 'Favorite Ice Cream Flavor',
       description: 'Try out ranked choice voting! Rank your favorite ice cream flavors in order of preference. This is a demo showing how instant runoff voting works.',
       contestType: ContestType.POLL,
       votingMethod: VotingMethod.IRV,
-      status: ContestStatus.CLOSED,
+      status: ContestStatus.OPEN,
       visibility: ContestVisibility.PUBLIC_LINK,
       ballotStyle: BallotStyle.DRAG,
       timezone: 'UTC',
@@ -300,8 +300,8 @@ async function main() {
   console.log('🎉 Seeding complete!');
   console.log('');
   console.log('Demo contests available:');
-  console.log('  • /vote/demo-election - Ice cream flavor poll (closed, 50+ votes) 🍦');
-  console.log('  • /results/demo-election - View demo results with round-by-round breakdown');
+  console.log('  • /vote/demo-election - Ice cream flavor poll (OPEN for interactive demo) 🍦');
+  console.log('  • /vote/demo-election/results - View live demo results');
   console.log('  • /vote/city-mascot-2024 - Mascot election with sample votes');
   console.log('  • /vote/annual-awards-2024 - Multi-category awards (grid ballot)');
   console.log('  • /vote/team-lunch-poll - Draft poll (not open for voting)');
