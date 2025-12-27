@@ -120,6 +120,7 @@ export default function ResultsPage() {
         setSelectedCategory(categories[0].id);
         setLoading(false);
       } catch (err) {
+        console.error('Error loading results:', err);
         setError(err instanceof Error ? err.message : 'Failed to load results');
         setLoading(false);
       }
