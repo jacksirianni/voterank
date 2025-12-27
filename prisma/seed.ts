@@ -87,19 +87,24 @@ async function main() {
 
   console.log('✅ Created sample ballots');
 
-  // Create the homepage demo contest - Ice Cream Flavor
+  // Create the homepage demo contest - Best Beatles Song
   const demoContest = await prisma.contest.upsert({
     where: { slug: 'demo-election' },
-    update: { status: ContestStatus.OPEN }, // Always keep demo OPEN
+    update: {
+      status: ContestStatus.OPEN,
+      title: 'Best Beatles Song',
+      description: 'Experience ranked choice voting! Rank your favorite Beatles songs in order of preference. This interactive demo shows how instant runoff voting works.',
+      ballotStyle: BallotStyle.GRID,
+    }, // Always keep demo OPEN and updated
     create: {
       slug: 'demo-election',
-      title: 'Favorite Ice Cream Flavor',
-      description: 'Try out ranked choice voting! Rank your favorite ice cream flavors in order of preference. This is a demo showing how instant runoff voting works.',
+      title: 'Best Beatles Song',
+      description: 'Experience ranked choice voting! Rank your favorite Beatles songs in order of preference. This interactive demo shows how instant runoff voting works.',
       contestType: ContestType.POLL,
       votingMethod: VotingMethod.IRV,
       status: ContestStatus.OPEN,
       visibility: ContestVisibility.PUBLIC_LINK,
-      ballotStyle: BallotStyle.DRAG,
+      ballotStyle: BallotStyle.GRID,
       timezone: 'UTC',
       settings: {
         allowPartialRanking: true,
@@ -111,27 +116,35 @@ async function main() {
 
   console.log('✅ Created demo contest:', demoContest.title);
 
-  // Create ice cream flavor options
-  const iceCreamOptions = [
-    { name: 'Chocolate', description: 'Classic rich chocolate' },
-    { name: 'Vanilla', description: 'Smooth and creamy vanilla bean' },
-    { name: 'Strawberry', description: 'Fresh strawberry with real fruit' },
-    { name: 'Mint Chip', description: 'Cool mint with chocolate chips' },
-    { name: 'Cookie Dough', description: 'Vanilla with cookie dough chunks' },
+  // Create Beatles song options
+  const beatlesSongs = [
+    { name: 'Hey Jude', description: 'A timeless singalong anthem with an unforgettable coda that brings audiences together. (Hey Jude • 1968)' },
+    { name: 'Let It Be', description: 'A soulful, gospel-inspired ballad offering comfort and hope through its simple, powerful message. (Let It Be • 1970)' },
+    { name: 'Come Together', description: 'A funky, hypnotic groove with cryptic lyrics and one of the most iconic basslines in rock history. (Abbey Road • 1969)' },
+    { name: 'Here Comes the Sun', description: 'A warm, uplifting ode to brighter days, featuring George Harrison\'s gentle guitar and optimistic melody. (Abbey Road • 1969)' },
+    { name: 'A Day in the Life', description: 'An experimental masterpiece blending orchestral crescendos with poignant storytelling and dreamlike sequences. (Sgt. Pepper\'s Lonely Hearts Club Band • 1967)' },
+    { name: 'Yesterday', description: 'A tender, melancholic ballad showcasing Paul McCartney\'s songwriting at its most introspective and timeless. (Help! • 1965)' },
+    { name: 'Strawberry Fields Forever', description: 'A psychedelic journey into nostalgia and introspection, layered with lush production and haunting vocals. (Magical Mystery Tour • 1967)' },
+    { name: 'While My Guitar Gently Weeps', description: 'A soulful meditation on love and loss, elevated by Eric Clapton\'s unforgettable guitar solo. (The Beatles (White Album) • 1968)' },
+    { name: 'In My Life', description: 'A poignant reflection on memory and love, balancing wistfulness with gratitude in a beautifully crafted melody. (Rubber Soul • 1965)' },
+    { name: 'Something', description: 'A sublime love song with one of the most beautiful melodies ever written, proving George Harrison\'s songwriting genius. (Abbey Road • 1969)' },
   ];
 
   const demoOptionIds: string[] = [];
-  for (let i = 0; i < iceCreamOptions.length; i++) {
+  for (let i = 0; i < beatlesSongs.length; i++) {
     const option = await prisma.option.upsert({
       where: {
         id: `demo-option-${i}`,
       },
-      update: {},
+      update: {
+        name: beatlesSongs[i].name,
+        description: beatlesSongs[i].description,
+      },
       create: {
         id: `demo-option-${i}`,
         contestId: demoContest.id,
-        name: iceCreamOptions[i].name,
-        description: iceCreamOptions[i].description,
+        name: beatlesSongs[i].name,
+        description: beatlesSongs[i].description,
         sortOrder: i,
       },
     });
