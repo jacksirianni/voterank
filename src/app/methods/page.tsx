@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { Header } from '@/components/marketing/Header';
+import { Footer } from '@/components/marketing/Footer';
 
 const methods = [
   {
@@ -118,14 +120,7 @@ const categoryColors = {
 export default function MethodsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/" className="text-xl font-display font-bold bg-brand-gradient bg-clip-text text-transparent">
-            VoteRank
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -416,22 +411,7 @@ export default function MethodsPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <Link href="/" className="text-brand-600 hover:text-brand-700 font-medium">
-              ← Back to Home
-            </Link>
-            <div className="flex gap-8 text-sm">
-              <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
-              <Link href="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
-              <Link href="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
-              <Link href="/contact" className="text-slate-600 hover:text-slate-900 transition-colors">Contact</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
