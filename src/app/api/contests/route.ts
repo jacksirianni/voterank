@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { createContestSchema } from '@/lib/validations';
 import { createContestSlug, createErrorResponse, AppError } from '@/lib/utils';
-import { auth } from '@/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/contests - List contests (for dashboard)
 export async function GET(request: NextRequest) {
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    const session = await auth();
-    const ownerId = session?.user?.id || null;
+    const user = await getCurrentUser();
+    const ownerId = user?.id || null;
 
     const body = await request.json();
 

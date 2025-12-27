@@ -1,22 +1,23 @@
-import { auth } from '@/auth';
-import { NextResponse } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const isAuthenticated = !!req.auth;
+// Define which routes require authentication
+const isProtectedRoute = createRouteMatcher([
+  '/my-contests(.*)',
+  '/create(.*)',
+]);
 
-  // Protect dashboard routes
-  if (pathname.startsWith('/dashboard')) {
-    if (!isAuthenticated) {
-      const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+export default clerkMiddleware(async (auth, req) => {
+  // Protect routes that require authentication
+  if (isProtectedRoute(req)) {
+    await auth.protect();
   }
-
-  return NextResponse.next();
 });
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 };

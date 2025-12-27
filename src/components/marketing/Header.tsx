@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -63,9 +64,24 @@ export function Header() {
             <Link href="/demo" className="btn-secondary text-sm px-4 py-2">
               Try Demo
             </Link>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 rounded-lg transition-colors">
+                  Sign In
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <Link href="/my-contests" className="px-3 py-2 text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 rounded-lg transition-colors">
+                My Contests
+              </Link>
+            </SignedIn>
             <Link href="/create" className="btn-primary text-sm px-4 py-2">
               Create Contest
             </Link>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
           </div>
 
           {/* Mobile menu button */}
@@ -138,6 +154,22 @@ export function Header() {
               >
                 Try Demo
               </Link>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="w-full px-4 py-2 text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 rounded-lg transition-colors">
+                    Sign In
+                  </button>
+                </SignInButton>
+              </SignedOut>
+              <SignedIn>
+                <Link
+                  href="/my-contests"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Contests
+                </Link>
+              </SignedIn>
               <Link
                 href="/create"
                 className="btn-primary w-full text-center"
@@ -145,6 +177,11 @@ export function Header() {
               >
                 Create Contest
               </Link>
+              <SignedIn>
+                <div className="flex justify-center pt-2">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              </SignedIn>
             </div>
           </nav>
         </div>
