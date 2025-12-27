@@ -491,27 +491,27 @@ export default function ResultsPage() {
                     <p className="text-slate-600 leading-relaxed">
                       Instant Runoff Voting (IRV) finds a winner through rounds of counting. In each round,
                       if no candidate has more than 50% of the active votes, the candidate with the fewest
-                      votes is eliminated. Their supporters' votes then transfer to their next-ranked choice.
+                      votes is eliminated. Their supporters&apos; votes then transfer to their next-ranked choice.
                     </p>
                     <p className="text-slate-600 leading-relaxed mt-3">
                       This continues until one candidate reaches a majority of the remaining active ballots.
-                      Some ballots become "exhausted" when all their ranked candidates have been eliminated.
+                      Some ballots become &quot;exhausted&quot; when all their ranked candidates have been eliminated.
                     </p>
                   </>
                 ) : contest.votingMethod === 'STV' ? (
                   <>
                     <p className="text-slate-600 leading-relaxed">
-                      Single Transferable Vote (STV) elects multiple winners proportionally. It uses a "quota"
+                      Single Transferable Vote (STV) elects multiple winners proportionally. It uses a &quot;quota&quot;
                       (calculated as: total votes ÷ (winners + 1) + 1) that candidates must reach to be elected.
                     </p>
                     <p className="text-slate-600 leading-relaxed mt-3">
                       In each round, candidates reaching the quota are elected. Any votes beyond the quota
-                      (surplus votes) transfer to voters' next preferences. If no candidate reaches the quota,
+                      (surplus votes) transfer to voters&apos; next preferences. If no candidate reaches the quota,
                       the candidate with the fewest votes is eliminated and their votes transfer.
                     </p>
                     <p className="text-slate-600 leading-relaxed mt-3">
                       This continues until all {contest.settings?.winnersCount || 'available'} seats are filled.
-                      Ballots become "exhausted" when all their ranked candidates have been either elected or eliminated.
+                      Ballots become &quot;exhausted&quot; when all their ranked candidates have been either elected or eliminated.
                     </p>
                   </>
                 ) : (
