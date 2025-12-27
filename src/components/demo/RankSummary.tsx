@@ -1,6 +1,6 @@
 'use client';
 
-import { DemoCandidate, RANK_LABELS } from './demoData';
+import { DemoCandidate } from './demoData';
 
 interface RankSummaryProps {
   ranks: (string | null)[];
