@@ -22,7 +22,7 @@ export function CandidateDescriptionGrid({ candidates }: CandidateDescriptionGri
       <div className="text-center mb-8">
         <div className="inline-block px-4 py-1 bg-slate-100 rounded-full mb-4">
           <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-            Candidate Descriptions
+            CANDIDATE DESCRIPTIONS
           </span>
         </div>
       </div>

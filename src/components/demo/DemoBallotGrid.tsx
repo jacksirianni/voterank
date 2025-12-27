@@ -31,7 +31,7 @@ export function DemoBallotGrid({ candidates, ranks, onRankChange }: DemoBallotGr
       {/* Header */}
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-display font-bold text-slate-900 mb-2">
-          Rank your vote
+          Rank Your Vote
         </h2>
         <p className="text-sm text-slate-600">
           Rank up to five songs. Mark no more than one oval in each column.
