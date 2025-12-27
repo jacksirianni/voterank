@@ -87,6 +87,128 @@ async function main() {
 
   console.log('✅ Created sample ballots');
 
+  // Create the homepage demo contest - Ice Cream Flavor
+  const demoContest = await prisma.contest.upsert({
+    where: { slug: 'demo-election' },
+    update: {},
+    create: {
+      slug: 'demo-election',
+      title: 'Favorite Ice Cream Flavor',
+      description: 'Try out ranked choice voting! Rank your favorite ice cream flavors in order of preference. This is a demo showing how instant runoff voting works.',
+      contestType: ContestType.POLL,
+      votingMethod: VotingMethod.IRV,
+      status: ContestStatus.CLOSED,
+      visibility: ContestVisibility.PUBLIC_LINK,
+      ballotStyle: BallotStyle.DRAG,
+      timezone: 'UTC',
+      settings: {
+        allowPartialRanking: true,
+        showLiveResults: true,
+        maxRanks: 5,
+      },
+    },
+  });
+
+  console.log('✅ Created demo contest:', demoContest.title);
+
+  // Create ice cream flavor options
+  const iceCreamOptions = [
+    { name: 'Chocolate', description: 'Classic rich chocolate' },
+    { name: 'Vanilla', description: 'Smooth and creamy vanilla bean' },
+    { name: 'Strawberry', description: 'Fresh strawberry with real fruit' },
+    { name: 'Mint Chip', description: 'Cool mint with chocolate chips' },
+    { name: 'Cookie Dough', description: 'Vanilla with cookie dough chunks' },
+  ];
+
+  const demoOptionIds: string[] = [];
+  for (let i = 0; i < iceCreamOptions.length; i++) {
+    const option = await prisma.option.upsert({
+      where: {
+        id: `demo-option-${i}`,
+      },
+      update: {},
+      create: {
+        id: `demo-option-${i}`,
+        contestId: demoContest.id,
+        name: iceCreamOptions[i].name,
+        description: iceCreamOptions[i].description,
+        sortOrder: i,
+      },
+    });
+    demoOptionIds.push(option.id);
+  }
+
+  console.log('✅ Created demo ice cream options');
+
+  // Create realistic sample ballots with varied preferences
+  const demoBallots = [
+    // Chocolate fans (35%)
+    [demoOptionIds[0], demoOptionIds[4], demoOptionIds[1]], // Chocolate > Cookie Dough > Vanilla
+    [demoOptionIds[0], demoOptionIds[3], demoOptionIds[4]], // Chocolate > Mint > Cookie Dough
+    [demoOptionIds[0], demoOptionIds[1], demoOptionIds[2]], // Chocolate > Vanilla > Strawberry
+    [demoOptionIds[0], demoOptionIds[4], demoOptionIds[3]], // Chocolate > Cookie Dough > Mint
+    [demoOptionIds[0], demoOptionIds[2]], // Chocolate > Strawberry
+    [demoOptionIds[0], demoOptionIds[1]], // Chocolate > Vanilla
+    [demoOptionIds[0], demoOptionIds[3], demoOptionIds[1]], // Chocolate > Mint > Vanilla
+    [demoOptionIds[0], demoOptionIds[4]], // Chocolate > Cookie Dough
+    [demoOptionIds[0], demoOptionIds[2], demoOptionIds[1]], // Chocolate > Strawberry > Vanilla
+    [demoOptionIds[0], demoOptionIds[1], demoOptionIds[4]], // Chocolate > Vanilla > Cookie Dough
+    [demoOptionIds[0], demoOptionIds[3]], // Chocolate > Mint
+    [demoOptionIds[0], demoOptionIds[4], demoOptionIds[2]], // Chocolate > Cookie Dough > Strawberry
+    [demoOptionIds[0]], // Chocolate only
+    [demoOptionIds[0], demoOptionIds[2], demoOptionIds[3]], // Chocolate > Strawberry > Mint
+
+    // Cookie Dough fans (30%)
+    [demoOptionIds[4], demoOptionIds[0], demoOptionIds[1]], // Cookie Dough > Chocolate > Vanilla
+    [demoOptionIds[4], demoOptionIds[1], demoOptionIds[0]], // Cookie Dough > Vanilla > Chocolate
+    [demoOptionIds[4], demoOptionIds[3], demoOptionIds[0]], // Cookie Dough > Mint > Chocolate
+    [demoOptionIds[4], demoOptionIds[0]], // Cookie Dough > Chocolate
+    [demoOptionIds[4], demoOptionIds[1], demoOptionIds[3]], // Cookie Dough > Vanilla > Mint
+    [demoOptionIds[4], demoOptionIds[2], demoOptionIds[0]], // Cookie Dough > Strawberry > Chocolate
+    [demoOptionIds[4], demoOptionIds[0], demoOptionIds[3]], // Cookie Dough > Chocolate > Mint
+    [demoOptionIds[4], demoOptionIds[1]], // Cookie Dough > Vanilla
+    [demoOptionIds[4]], // Cookie Dough only
+    [demoOptionIds[4], demoOptionIds[3], demoOptionIds[1]], // Cookie Dough > Mint > Vanilla
+    [demoOptionIds[4], demoOptionIds[0], demoOptionIds[2]], // Cookie Dough > Chocolate > Strawberry
+    [demoOptionIds[4], demoOptionIds[2]], // Cookie Dough > Strawberry
+
+    // Mint Chip fans (18%)
+    [demoOptionIds[3], demoOptionIds[0], demoOptionIds[4]], // Mint > Chocolate > Cookie Dough
+    [demoOptionIds[3], demoOptionIds[1], demoOptionIds[0]], // Mint > Vanilla > Chocolate
+    [demoOptionIds[3], demoOptionIds[4], demoOptionIds[0]], // Mint > Cookie Dough > Chocolate
+    [demoOptionIds[3], demoOptionIds[0]], // Mint > Chocolate
+    [demoOptionIds[3], demoOptionIds[2], demoOptionIds[1]], // Mint > Strawberry > Vanilla
+    [demoOptionIds[3], demoOptionIds[1]], // Mint > Vanilla
+    [demoOptionIds[3], demoOptionIds[4], demoOptionIds[1]], // Mint > Cookie Dough > Vanilla
+    [demoOptionIds[3]], // Mint only
+    [demoOptionIds[3], demoOptionIds[0], demoOptionIds[1]], // Mint > Chocolate > Vanilla
+
+    // Vanilla fans (10%)
+    [demoOptionIds[1], demoOptionIds[0], demoOptionIds[4]], // Vanilla > Chocolate > Cookie Dough
+    [demoOptionIds[1], demoOptionIds[4], demoOptionIds[0]], // Vanilla > Cookie Dough > Chocolate
+    [demoOptionIds[1], demoOptionIds[2]], // Vanilla > Strawberry
+    [demoOptionIds[1], demoOptionIds[3], demoOptionIds[0]], // Vanilla > Mint > Chocolate
+    [demoOptionIds[1]], // Vanilla only
+
+    // Strawberry fans (7%)
+    [demoOptionIds[2], demoOptionIds[1], demoOptionIds[0]], // Strawberry > Vanilla > Chocolate
+    [demoOptionIds[2], demoOptionIds[4], demoOptionIds[1]], // Strawberry > Cookie Dough > Vanilla
+    [demoOptionIds[2], demoOptionIds[3]], // Strawberry > Mint
+    [demoOptionIds[2]], // Strawberry only
+  ];
+
+  for (let i = 0; i < demoBallots.length; i++) {
+    await prisma.ballot.create({
+      data: {
+        contestId: demoContest.id,
+        ranking: demoBallots[i],
+        deviceFingerprintHash: `demo-ice-cream-${i}`,
+      },
+    });
+  }
+
+  console.log(`✅ Created ${demoBallots.length} demo ballots`);
+
   // Create a multi-category contest - Annual Awards
   const awardsContest = await prisma.contest.upsert({
     where: { slug: 'annual-awards-2024' },
@@ -178,6 +300,8 @@ async function main() {
   console.log('🎉 Seeding complete!');
   console.log('');
   console.log('Demo contests available:');
+  console.log('  • /vote/demo-election - Ice cream flavor poll (closed, 50+ votes) 🍦');
+  console.log('  • /results/demo-election - View demo results with round-by-round breakdown');
   console.log('  • /vote/city-mascot-2024 - Mascot election with sample votes');
   console.log('  • /vote/annual-awards-2024 - Multi-category awards (grid ballot)');
   console.log('  • /vote/team-lunch-poll - Draft poll (not open for voting)');

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { slugify, generateSlugSuggestions } from '@/lib/slug';
 
@@ -11,8 +11,9 @@ interface Option {
   description: string;
 }
 
-export default function CreateContestPage() {
+function CreateContestForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +163,33 @@ export default function CreateContestPage() {
 
     return () => clearTimeout(timer);
   }, [slugFinal, slugMode, checkSlugAvailability]);
+
+  // Template prefill from query params
+  useEffect(() => {
+    const prefillTitle = searchParams.get('title');
+    const prefillOptions = searchParams.get('options');
+    const prefillMethod = searchParams.get('votingMethod');
+
+    if (prefillTitle) {
+      setTitle(prefillTitle);
+    }
+
+    if (prefillMethod && ['IRV', 'STV', 'STAR', 'BORDA', 'APPROVAL', 'SCORE'].includes(prefillMethod)) {
+      setVotingMethod(prefillMethod);
+    }
+
+    if (prefillOptions) {
+      const optionNames = prefillOptions.split(',').map(o => o.trim()).filter(Boolean);
+      if (optionNames.length >= 2) {
+        const newOptions = optionNames.map((name, index) => ({
+          tempId: String(index + 1),
+          name,
+          description: '',
+        }));
+        setOptions(newOptions);
+      }
+    }
+  }, [searchParams]);
 
   // T2.1: Validate title
   const validateTitle = (value: string) => {
@@ -1060,5 +1088,20 @@ export default function CreateContestPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function CreateContestPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CreateContestForm />
+    </Suspense>
   );
 }
