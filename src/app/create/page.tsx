@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Header } from '@/components/marketing/Header';
+import { Footer } from '@/components/marketing/Footer';
 import { slugify, generateSlugSuggestions } from '@/lib/slug';
 
 interface Option {
@@ -344,37 +346,44 @@ function CreateContestForm() {
   // If published, show success screen
   if (published) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden flex flex-col">
+        <Header />
+
+        {/* Gradient Orbs */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+
+        <main className="flex-1 flex items-center justify-center p-4 relative z-10">
+          <div className="max-w-2xl w-full">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-green-100 to-green-200 mx-auto mb-6">
+                <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">Contest Published!</h1>
+              <p className="text-lg text-slate-600">Your contest is ready for voters.</p>
             </div>
-            <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">Contest Published!</h1>
-            <p className="text-slate-600">Your contest is ready for voters.</p>
-          </div>
 
           <div className="space-y-4">
             {/* Vote link */}
-            <div className="card p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Vote Link <span className="text-slate-500">(Share with voters)</span>
+            <div className="bg-white border-2 border-slate-200 rounded-3xl shadow-xl p-8">
+              <label className="block text-sm font-semibold text-slate-900 mb-3">
+                Vote Link <span className="text-slate-500 font-normal">(Share with voters)</span>
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <input
                   type="text"
                   value={voteLink}
                   readOnly
-                  className="input flex-1 font-mono text-sm"
+                  className="input flex-1 font-mono text-sm bg-slate-50"
                 />
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(voteLink);
                     alert('Link copied to clipboard!');
                   }}
-                  className="btn-secondary px-6"
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
                 >
                   Copy
                 </button>
@@ -382,90 +391,119 @@ function CreateContestForm() {
             </div>
 
             {/* Admin link */}
-            <div className="card p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Admin Link <span className="text-amber-600">(Keep this secret!)</span>
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl shadow-xl p-8">
+              <label className="block text-sm font-semibold text-slate-900 mb-3">
+                Admin Link <span className="text-amber-700 font-normal">(Keep this secret!)</span>
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <input
                   type="text"
                   value={adminLink}
                   readOnly
-                  className="input flex-1 font-mono text-sm"
+                  className="input flex-1 font-mono text-sm bg-white"
                 />
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(adminLink);
                     alert('Link copied to clipboard!');
                   }}
-                  className="btn-secondary px-6"
+                  className="px-6 py-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
                 >
                   Copy
                 </button>
               </div>
-              <p className="text-sm text-amber-600 mt-2 flex items-start gap-2">
-                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <p className="text-sm text-amber-700 mt-4 flex items-start gap-2 bg-white/60 rounded-xl p-3">
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                Anyone with this link can manage your contest. Keep it safe!
+                <span>Anyone with this link can manage your contest. Keep it safe!</span>
               </p>
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => router.push(voteLink)}
-              className="btn-secondary"
+              className="px-8 py-4 rounded-xl font-semibold text-lg bg-white border-2 border-slate-300 text-slate-700 hover:border-purple-300 hover:shadow-lg transition-all"
             >
               Preview Voting Page
             </button>
             <button
               onClick={() => router.push(adminLink)}
-              className="btn-primary"
+              className="px-8 py-4 rounded-xl font-semibold text-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               Manage Contest
             </button>
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="mt-6 text-center">
             <button
               onClick={() => router.push('/')}
-              className="text-slate-600 hover:text-slate-900 text-sm"
+              className="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-2 mx-auto"
             >
-              ← Back to Home
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Home
             </button>
           </div>
         </div>
+        </main>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden flex flex-col">
+      <Header />
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Progress steps */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          {[1, 2, 3, 4].map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
-                step >= s ? 'bg-brand-500 text-white' : 'bg-slate-200 text-slate-500'
-              }`}>
-                {s}
+      {/* Gradient Orbs */}
+      <div className="absolute top-20 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+      <div className="absolute top-40 left-1/3 w-96 h-96 bg-brand-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+      <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+
+      <main className="flex-1 max-w-3xl mx-auto px-4 py-12 relative z-10 w-full">
+        {/* Page Title */}
+        <div className="text-center mb-12">
+          <div className="inline-block mb-4">
+            <span className="px-4 py-1.5 bg-purple-100 text-purple-700 font-semibold text-sm rounded-full uppercase tracking-wide">
+              Create Contest
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">
+            Launch Your Vote
+          </h1>
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Set up a ranked choice election in minutes
+          </p>
+        </div>
+
+        {/* Progress Stepper */}
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-12">
+          {[
+            { num: 1, label: 'Info' },
+            { num: 2, label: 'Method' },
+            { num: 3, label: 'Options' },
+            { num: 4, label: 'Access' }
+          ].map((s, idx) => (
+            <div key={s.num} className="flex items-center gap-2">
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-base sm:text-lg transition-all ${
+                  step >= s.num
+                    ? 'bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
+                    : 'bg-white border-2 border-slate-300 text-slate-400'
+                }`}>
+                  {s.num}
+                </div>
+                <span className={`text-xs sm:text-sm mt-2 font-medium ${step >= s.num ? 'text-purple-700' : 'text-slate-400'}`}>
+                  {s.label}
+                </span>
               </div>
-              {s < 4 && (
-                <div className={`w-12 h-1 rounded ${step > s ? 'bg-brand-500' : 'bg-slate-200'}`} />
+              {idx < 3 && (
+                <div className={`w-8 sm:w-16 h-1 rounded-full mb-6 transition-all ${
+                  step > s.num ? 'bg-gradient-to-r from-purple-600 to-purple-700' : 'bg-slate-200'
+                }`} />
               )}
             </div>
           ))}
@@ -473,9 +511,9 @@ function CreateContestForm() {
 
         {/* T2.1: Step 1 - Basic Info */}
         {step === 1 && (
-          <div className="card p-6">
-            <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">Basic Information</h1>
-            <p className="text-slate-600 mb-6">Give your contest a name and choose its type.</p>
+          <div className="bg-white border-2 border-slate-200 rounded-3xl shadow-xl p-8 sm:p-10">
+            <h2 className="text-3xl font-display font-bold text-slate-900 mb-3">Basic Information</h2>
+            <p className="text-slate-600 mb-8 text-lg">Give your contest a name and choose its type.</p>
 
             <div className="space-y-6">
               {/* Title */}
@@ -620,22 +658,70 @@ function CreateContestForm() {
 
               {/* Contest Type */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-900 mb-4">
                   Contest Type <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   {[
-                    { value: 'POLL', label: 'Poll', desc: 'Quick decision poll', icon: '📊' },
-                    { value: 'ELECTION', label: 'Election', desc: 'Formal election', icon: '🗳️' },
-                    { value: 'SURVEY', label: 'Survey', desc: 'Multi-question survey', icon: '📋' },
-                    { value: 'RANKING', label: 'Ranking', desc: 'General ranking', icon: '🏆' },
+                    {
+                      value: 'POLL',
+                      label: 'Poll',
+                      desc: 'Quick decision poll',
+                      bgColor: 'bg-blue-50',
+                      borderColor: 'border-blue-300',
+                      iconColor: 'text-blue-600',
+                      icon: (
+                        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00 2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      )
+                    },
+                    {
+                      value: 'ELECTION',
+                      label: 'Election',
+                      desc: 'Formal election',
+                      bgColor: 'bg-purple-50',
+                      borderColor: 'border-purple-300',
+                      iconColor: 'text-purple-600',
+                      icon: (
+                        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                      )
+                    },
+                    {
+                      value: 'SURVEY',
+                      label: 'Survey',
+                      desc: 'Multi-question survey',
+                      bgColor: 'bg-green-50',
+                      borderColor: 'border-green-300',
+                      iconColor: 'text-green-600',
+                      icon: (
+                        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )
+                    },
+                    {
+                      value: 'RANKING',
+                      label: 'Ranking',
+                      desc: 'General ranking',
+                      bgColor: 'bg-amber-50',
+                      borderColor: 'border-amber-300',
+                      iconColor: 'text-amber-600',
+                      icon: (
+                        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      )
+                    },
                   ].map(type => (
                     <label
                       key={type.value}
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      className={`p-6 border-2 rounded-2xl cursor-pointer transition-all group ${
                         contestType === type.value
-                          ? 'border-brand-500 bg-brand-50'
-                          : 'border-slate-200 hover:border-brand-300'
+                          ? `${type.borderColor} ${type.bgColor} shadow-lg`
+                          : 'border-slate-200 bg-white hover:border-purple-300 hover:shadow-md'
                       }`}
                     >
                       <input
@@ -646,9 +732,13 @@ function CreateContestForm() {
                         onChange={(e) => setContestType(e.target.value)}
                         className="sr-only"
                       />
-                      <div className="text-2xl mb-2">{type.icon}</div>
-                      <div className="font-medium text-slate-900">{type.label}</div>
-                      <div className="text-xs text-slate-500">{type.desc}</div>
+                      <div className={`w-14 h-14 rounded-xl ${type.bgColor} ${type.iconColor} p-3 mb-3 transition-transform ${
+                        contestType === type.value ? 'scale-110' : 'group-hover:scale-105'
+                      }`}>
+                        {type.icon}
+                      </div>
+                      <div className="font-semibold text-slate-900 mb-1">{type.label}</div>
+                      <div className="text-sm text-slate-600">{type.desc}</div>
                     </label>
                   ))}
                 </div>
