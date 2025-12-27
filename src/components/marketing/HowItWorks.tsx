@@ -30,24 +30,36 @@ export function HowItWorks() {
   ];
 
   return (
-    <section className="py-20 bg-white border-t border-slate-200" id="how-it-works">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 mb-3">
-            How It Works
+    <section className="py-24 bg-white" id="how-it-works">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-block mb-4">
+            <span className="px-4 py-1.5 bg-brand-50 border border-brand-200 text-brand-700 rounded-full text-sm font-semibold uppercase tracking-wide">
+              How It Works
+            </span>
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">
+            Three simple steps to <span className="bg-brand-gradient bg-clip-text text-transparent">better decisions</span>
           </h2>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Three simple steps from setup to results
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            From setup to transparent results in minutes
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
           {steps.map((step, index) => (
-            <div key={index} className="text-center">
-              <div className="w-14 h-14 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-4">
-                {step.icon}
+            <div key={index} className="relative group">
+              {/* Connection Line */}
+              {index < 2 && (
+                <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-brand-300 to-brand-100 -z-10" />
+              )}
+
+              <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 hover:border-brand-300 hover:shadow-xl transition-all hover:-translate-y-1">
+                <div className="w-16 h-16 rounded-2xl bg-brand-gradient text-white flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/30 group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-brand-500/50 transition-all">
+                  {step.icon}
+                </div>
+                <h3 className="font-display font-bold text-2xl mb-3 text-slate-900">{step.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{step.description}</p>
               </div>
-              <h3 className="font-display font-semibold text-xl mb-2 text-slate-900">{step.title}</h3>
-              <p className="text-slate-600 leading-relaxed">{step.description}</p>
             </div>
           ))}
         </div>

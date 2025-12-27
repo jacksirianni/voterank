@@ -36,16 +36,16 @@ export function TrustChips() {
   ];
 
   return (
-    <section className="py-8 bg-slate-50 border-y border-slate-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+    <section className="py-12 bg-gradient-to-b from-white to-slate-50 border-y border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
           {chips.map((chip, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-slate-200 shadow-sm"
+              className="group flex items-center gap-2.5 px-5 py-3 bg-white rounded-full border-2 border-slate-200 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-500/10 transition-all hover:-translate-y-0.5"
             >
-              <div className="text-brand-600">{chip.icon}</div>
-              <span className="text-sm font-medium text-slate-700">{chip.label}</span>
+              <div className="text-brand-600 group-hover:scale-110 transition-transform">{chip.icon}</div>
+              <span className="text-sm font-semibold text-slate-700 group-hover:text-brand-700 transition-colors">{chip.label}</span>
             </div>
           ))}
         </div>
