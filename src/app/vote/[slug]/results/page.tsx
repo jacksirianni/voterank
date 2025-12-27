@@ -204,12 +204,21 @@ export default function ResultsPage() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href={`/vote/${slug}`} className="text-sm text-brand-600 hover:text-brand-700 mb-2 inline-flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to contest
-          </Link>
+          <div className="flex items-center gap-4 mb-2">
+            <Link href={`/vote/${slug}`} className="text-sm text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to contest
+            </Link>
+            <span className="text-slate-300">|</span>
+            <Link href="/" className="text-sm text-slate-600 hover:text-slate-700 inline-flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Home
+            </Link>
+          </div>
           <h1 className="text-2xl font-display font-bold text-slate-900">{contest.title}</h1>
           <p className="text-slate-600 mt-1">
             {contest.votingMethod === 'IRV' ? 'Instant Runoff Voting' : contest.votingMethod} Results

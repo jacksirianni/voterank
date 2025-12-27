@@ -304,8 +304,18 @@ export default function VotePage() {
             {contest?.status === 'OPEN' && contest?.closesAt && new Date(contest.closesAt) < new Date() && 'Voting has closed.'}
           </p>
           {contest?.status === 'CLOSED' && (
-            <Link href={`/vote/${slug}/results`} className="btn-primary">
-              View Results
+            <div className="space-y-3">
+              <Link href={`/vote/${slug}/results`} className="btn-primary block">
+                View Results
+              </Link>
+              <Link href="/" className="btn-secondary block">
+                Back to Home
+              </Link>
+            </div>
+          )}
+          {contest?.status !== 'CLOSED' && (
+            <Link href="/" className="btn-secondary">
+              Back to Home
             </Link>
           )}
         </div>

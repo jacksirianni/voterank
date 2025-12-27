@@ -39,7 +39,7 @@ export default function HomePage() {
               </Link>
             </div>
             <Link
-              href="/results/demo-election"
+              href="/vote/demo-election/results"
               className="text-sm text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
             >
               View sample results
