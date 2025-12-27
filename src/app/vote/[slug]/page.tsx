@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import DragBallot from '@/components/voting/DragBallot';
 import GridBallot from '@/components/voting/GridBallot';
+import { Header } from '@/components/marketing/Header';
+import { Footer } from '@/components/marketing/Footer';
 
 interface Option {
   id: string;
@@ -288,37 +290,136 @@ export default function VotePage() {
 
   // Closed state
   if (step === 'closed') {
+    const isDemoContest = slug === 'demo-election';
+
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-10V7a4 4 0 00-8 0v4h12V7a4 4 0 00-8 0" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-display font-bold text-slate-900 mb-2">{contest?.title}</h1>
-          <p className="text-slate-600 mb-6">
-            {contest?.status === 'DRAFT' && 'This contest is not yet open for voting.'}
-            {contest?.status === 'CLOSED' && 'This contest has ended.'}
-            {contest?.status === 'OPEN' && contest?.opensAt && new Date(contest.opensAt) > new Date() && `Voting opens ${new Date(contest.opensAt).toLocaleDateString()}`}
-            {contest?.status === 'OPEN' && contest?.closesAt && new Date(contest.closesAt) < new Date() && 'Voting has closed.'}
-          </p>
-          {contest?.status === 'CLOSED' && (
-            <div className="space-y-3">
-              <Link href={`/vote/${slug}/results`} className="btn-primary block">
-                View Results
-              </Link>
-              <Link href="/" className="btn-secondary block">
-                Back to Home
-              </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+        <Header />
+
+        <section className="relative overflow-hidden py-24">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
+
+          {/* Gradient Orbs */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+
+          <div className="relative max-w-2xl mx-auto px-4 text-center">
+            {/* Demo Badge */}
+            {isDemoContest && (
+              <div className="inline-block mb-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-full">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-amber-700">
+                    Interactive Demo
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Icon */}
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100 border-2 border-amber-200 flex items-center justify-center mx-auto mb-8 shadow-xl shadow-amber-500/20">
+              <svg className="w-12 h-12 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-          )}
-          {contest?.status !== 'CLOSED' && (
-            <Link href="/" className="btn-secondary">
-              Back to Home
-            </Link>
-          )}
-        </div>
+
+            {/* Title */}
+            <h1 className="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">
+              {contest?.title}
+            </h1>
+
+            {/* Status Message */}
+            <div className="mb-8">
+              {contest?.status === 'DRAFT' && (
+                <p className="text-xl text-slate-600">
+                  This contest is not yet open for voting.
+                </p>
+              )}
+              {contest?.status === 'CLOSED' && (
+                <div className="space-y-2">
+                  <p className="text-xl text-slate-600">
+                    Voting has ended for this contest.
+                  </p>
+                  {isDemoContest && (
+                    <p className="text-base text-slate-500">
+                      Explore the results to see how ranked choice voting works in action
+                    </p>
+                  )}
+                </div>
+              )}
+              {contest?.status === 'OPEN' && contest?.opensAt && new Date(contest.opensAt) > new Date() && (
+                <p className="text-xl text-slate-600">
+                  Voting opens {new Date(contest.opensAt).toLocaleDateString()}
+                </p>
+              )}
+              {contest?.status === 'OPEN' && contest?.closesAt && new Date(contest.closesAt) < new Date() && (
+                <p className="text-xl text-slate-600">
+                  Voting has closed.
+                </p>
+              )}
+            </div>
+
+            {/* CTAs */}
+            {contest?.status === 'CLOSED' && (
+              <div className="space-y-4 max-w-md mx-auto">
+                <Link
+                  href={`/vote/${slug}/results`}
+                  className="group inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-brand-gradient text-white rounded-xl font-semibold text-lg hover:shadow-2xl hover:shadow-brand-500/50 transition-all hover:scale-105"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  View Results
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+
+                {isDemoContest && (
+                  <Link
+                    href="/create"
+                    className="inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-xl font-semibold text-lg hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50 transition-all hover:shadow-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Your Own Contest
+                  </Link>
+                )}
+
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 w-full px-6 py-3 text-slate-600 hover:text-brand-600 font-medium transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to Home
+                </Link>
+              </div>
+            )}
+
+            {contest?.status !== 'CLOSED' && (
+              <div className="max-w-md mx-auto">
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-slate-700 border-2 border-slate-200 rounded-xl font-semibold text-lg hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50 transition-all hover:shadow-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to Home
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <Footer />
       </div>
     );
   }
