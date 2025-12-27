@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Header } from '@/components/marketing/Header';
 import { TrustChips } from '@/components/marketing/TrustChips';
 import { HowItWorks } from '@/components/marketing/HowItWorks';
